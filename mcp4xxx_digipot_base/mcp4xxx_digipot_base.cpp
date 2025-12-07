@@ -7,633 +7,246 @@ namespace esphome {
 namespace mcp4xxx_digipot_base {
 
 static const char *const TAG = "mcp4xxx_digipot_base";
-constexpr uint8_t EEPROM_WRITE_TIMEOUT_MS = 10;
+// constexpr uint8_t EEPROM_WRITE_TIMEOUT_MS = 10;
 
 void mcp4xxx_digipot_base_component::setup() { 
-  auto err = this->write(nullptr, 0);
-  if (err != i2c::ERROR_OK) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
+  ESP_LOGD(TAG, "Setting up MCP4XXX");
+  this->communication_init_();
+  if (this->mcp4xxx_write_(nullptr, 0)) {
+    // this->error_code_ = MCP4461_STATUS_I2C_ERROR;
+    ESP_LOGE(TAG, "Communication with device failed during setup");
     this->mark_failed();
-    return;
+    // return;
   }
-  // save WP/WL status
-  this->update_write_protection_status_();
-  for (uint8_t i = 0; i < 8; i++) {
-    if (this->reg_[i].initial_value.has_value()) {
-      uint16_t initial_state = static_cast<uint16_t>(*this->reg_[i].initial_value * 256.0f);
-      this->write_wiper_level_(i, initial_state);
-    }
-    if (this->reg_[i].enabled) {
-      this->reg_[i].state = this->read_wiper_level_(i);
-    } else {
-      // only volatile wipers can be set disabled on hw level
-      if (i < 4) {
-        this->reg_[i].state = 0;
-        Mcp4461WiperIdx wiper_idx = static_cast<Mcp4461WiperIdx>(i);
-        this->disable_wiper_(wiper_idx);
-      }
-    }
-  }
+  ESP_LOGV(TAG, "Setup finished");
 }
 
-void mcp4xxx_digipot_base_component::set_initial_value(Mcp4461WiperIdx wiper, float initial_value) {
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  this->reg_[wiper_idx].initial_value = initial_value;
-}
-
-void mcp4xxx_digipot_base_component::initialize_terminal_disabled(Mcp4461WiperIdx wiper, char terminal) {
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  switch (terminal) {
-    case 'a':
-      this->reg_[wiper_idx].terminal_a = false;
-      break;
-    case 'b':
-      this->reg_[wiper_idx].terminal_b = false;
-      break;
-    case 'w':
-      this->reg_[wiper_idx].terminal_w = false;
-      break;
-    // case 'h':
-    //   this->reg_[wiper_idx].enabled = false;
-    //   break;
-  }
-}
-
-void mcp4xxx_digipot_base_component::initialize_wiper_disabled(Mcp4461WiperIdx wiper) {
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  this->reg_[wiper_idx].enabled = false;
-}
-
-void mcp4xxx_digipot_base_component::update_write_protection_status_() {
-  uint8_t status_register_value = this->get_status_register_();
-  this->write_protected_ = static_cast<bool>((status_register_value >> 0) & 0x01);
-  this->reg_[0].wiper_lock_active = static_cast<bool>((status_register_value >> 2) & 0x01);
-  this->reg_[1].wiper_lock_active = static_cast<bool>((status_register_value >> 3) & 0x01);
-  this->reg_[2].wiper_lock_active = static_cast<bool>((status_register_value >> 5) & 0x01);
-  this->reg_[3].wiper_lock_active = static_cast<bool>((status_register_value >> 6) & 0x01);
-}
-
-void mcp4xxx_digipot_base_component::dump_config() {
+void mcp4xxx_digipot_base_component::dump_config_base() {
   ESP_LOGCONFIG(TAG, "mcp4461:");
-  LOG_I2C_DEVICE(this);
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-  }
-  // log wiper status
-  for (uint8_t i = 0; i < 8; ++i) {
-    // terminals only valid for volatile wipers 0-3 - enable/disable is terminal hw
-    // so also invalid for nonvolatile. For these, only print current level.
-    // reworked to be a one-line intentionally, as output would not be in order
-    if (i < 4) {
-      ESP_LOGCONFIG(TAG, "  ├── Volatile wiper [%u] level: %u, Status: %s, HW: %s, A: %s, B: %s, W: %s", i,
-                    this->reg_[i].state, ONOFF(this->reg_[i].terminal_hw), ONOFF(this->reg_[i].terminal_a),
-                    ONOFF(this->reg_[i].terminal_b), ONOFF(this->reg_[i].terminal_w), ONOFF(this->reg_[i].enabled));
-    } else {
-      ESP_LOGCONFIG(TAG, "  ├── Nonvolatile wiper [%u] level: %u", i, this->reg_[i].state);
-    }
-  }
+  // // LOG_I2C_DEVICE(this);
+  // if (this->is_failed()) {
+  //   ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
+  // }
+  // // log wiper status
+  // for (uint8_t i = 0; i < 8; ++i) {
+  //   // terminals only valid for volatile wipers 0-3 - enable/disable is terminal hw
+  //   // so also invalid for nonvolatile. For these, only print current level.
+  //   // reworked to be a one-line intentionally, as output would not be in order
+  //   if (i < 4) {
+  //     ESP_LOGCONFIG(TAG, "  ├── Volatile wiper [%u] level: %u, Status: %s, HW: %s, A: %s, B: %s, W: %s", i,
+  //                   this->reg_[i].state, ONOFF(this->reg_[i].terminal_hw), ONOFF(this->reg_[i].terminal_a),
+  //                   ONOFF(this->reg_[i].terminal_b), ONOFF(this->reg_[i].terminal_w), ONOFF(this->reg_[i].enabled));
+  //   } else {
+  //     ESP_LOGCONFIG(TAG, "  ├── Nonvolatile wiper [%u] level: %u", i, this->reg_[i].state);
+  //   }
+  // }
 }
 
-void mcp4xxx_digipot_base_component::loop() {
-  if (this->status_has_warning()) {
-    this->get_status_register_();
-  }
-  for (uint8_t i = 0; i < 8; i++) {
-    if (this->reg_[i].update_level) {
-      // set wiper i state if changed
-      if (this->reg_[i].state != this->read_wiper_level_(i)) {
-        this->write_wiper_level_(i, this->reg_[i].state);
-      }
-    }
-    this->reg_[i].update_level = false;
-    // can be true only for wipers 0-3
-    // setting changes for terminals of nonvolatile wipers
-    // is prohibited in public methods
-    if (this->reg_[i].update_terminal) {
-      // set terminal register changes
-      Mcp4461TerminalIdx terminal_connector =
-          i < 2 ? Mcp4461TerminalIdx::MCP4461_TERMINAL_0 : Mcp4461TerminalIdx::MCP4461_TERMINAL_1;
-      uint8_t new_terminal_value = this->calc_terminal_connector_byte_(terminal_connector);
-      ESP_LOGV(TAG, "updating terminal %u to new value %u", static_cast<uint8_t>(terminal_connector),
-               new_terminal_value);
-      this->set_terminal_register_(terminal_connector, new_terminal_value);
-    }
-    this->reg_[i].update_terminal = false;
-  }
+inline uint8_t mcp4xxx_digipot_base_component::create_command_byte_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits) {
+  // Command byte format: AD3 AD2 AD1 AD0 C1 C0 D9 D8
+  // Address bits: 7-4, Command bits: 3-2, Data bits: 1-0, D9 unused
+  return (address << 4) | (command & 0x0C) | ((data_bits & 0x100) >> 8);
 }
 
-uint8_t mcp4xxx_digipot_base_component::get_status_register_() {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return 0;
+inline uint8_t mcp4xxx_digipot_base_component::create_data_byte_(uint16_t data_bits) {
+  // Data byte format: D7 D6 D5 D4 D3 D2 D1 D0
+  return static_cast<uint8_t>(data_bits & 0xFF);
+}
+
+// volatile wiper only
+bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value) { //todo max value variable
+  if (value > MCP4XXX_MAX_VALUE) {
+    ESP_LOGE(TAG, "Invalid wiper value: %d (max: %d)", value, MCP4XXX_MAX_VALUE);
+    return false;
   }
-  uint8_t addr = static_cast<uint8_t>(Mcp4461Addresses::MCP4461_STATUS);
-  uint8_t reg = addr | static_cast<uint8_t>(Mcp4461Commands::READ);
-  uint16_t buf;
-  if (!this->read_16_(reg, &buf)) {
-    this->error_code_ = MCP4461_STATUS_REGISTER_ERROR;
-    this->mark_failed();
-    return 0;
+  ESP_LOGD(TAG, "Setting wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
+
+  uint8_t data[2];
+  data[0] = this->create_command_byte_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::WRITE, value);
+  data[1] = this->create_data_byte_(value);
+
+  this->mcp4xxx_write_(data, 2);
+
+  ESP_LOGV(TAG, "Wrote wiper value: command=0x%02X, data=0x%02X", data[0], data[1]);
+  return true;
+}
+
+uint16_t mcp4xxx_digipot_base_component::read_wiper_value_(MCP4XXXWiperID wiper) {
+
+  uint8_t command_byte = this->create_command_byte_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::READ, 0);
+
+  this->mcp4xxx_write_(&command_byte, 1);
+  // this->mcp4xxx_write_(0x00);  // Dummy byte for read operation //z note: don't think this is required
+
+  uint8_t data[2];
+  this->mcp4xxx_read_(data, 2);
+  uint16_t response = encode_uint16(data[0], data[1]);
+
+  ESP_LOGV(TAG, "Read wiper value: command=0x%02X, response=0x%02X",
+            command_byte, response);
+
+  return response;
+}
+
+bool mcp4xxx_digipot_base_component::increment_wiper_(MCP4XXXWiperID wiper) {
+
+  uint8_t command_byte = this->create_command_byte_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::INCREMENT, 0);
+
+  this->mcp4xxx_write_(&command_byte, 1);
+
+  ESP_LOGV(TAG, "Incremented wiper: command=0x%02X", command_byte);
+
+  // Update current value if not at maximum
+  // if (this->current_value_ < MCP4XXX_MAX_VALUE) {
+  //   this->current_value_++;
+    return true;
+  // } else {
+  //   ESP_LOGW(TAG, "Unable to increment wiper %u. Already at max level.", static_cast<uint8_t>(wiper));
+  //   return false;
+  // }
+}
+
+bool mcp4xxx_digipot_base_component::decrement_wiper_(MCP4XXXWiperID wiper) {
+
+  uint8_t command_byte = this->create_command_byte_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::DECREMENT, 0);
+
+  this->mcp4xxx_write_(&command_byte, 1);
+
+  ESP_LOGV(TAG, "Decremented wiper: command=0x%02X", command_byte);
+
+  // Update current value if not at maximum
+  // if (this->current_value_ > 0) {
+  //   this->current_value_--;
+    return true;
+  // } else {
+  //   ESP_LOGW(TAG, "Unable to increment wiper %u.  Already at min level.", static_cast<uint8_t>(wiper));
+  //   return false;
+  // }
+}
+
+bool mcp4xxx_digipot_base_component::write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value) {
+
+
+  uint8_t command_byte = this->create_command_byte_(static_cast<MCP4XXXAddresses>(tcon_id_), MCP4XXXCommands::WRITE, value);
+  uint8_t data_byte = this->create_data_byte_(value);
+
+  this->mcp4xxx_write_(&command_byte, 1);
+  this->mcp4xxx_write_(&data_byte, 1);
+
+  ESP_LOGV(TAG, "Wrote TCON register: command=0x%02X, data=0x%02X", command_byte, data_byte);
+  return true;
+}
+
+bool mcp4xxx_digipot_base_component::set_terminal_connection_(MCP4XXXWiperID wiper, bool connect_a, bool connect_w, bool connect_b) {
+  MCP4XXX_TCON_N tcon_id;
+  if (wiper == WIPER_0 || wiper == WIPER_1) {
+    tcon_id = MCP4XXX_TCON_N::MCP4XXX_TCON_0;
+
+  } else { // WIPER_2 and WIPER_3
+    tcon_id = MCP4XXX_TCON_N::MCP4XXX_TCON_1;
   }
-  uint8_t msb = buf >> 8;
-  uint8_t lsb = static_cast<uint8_t>(buf & 0x00ff);
-  if (msb != 1 || ((lsb >> 7) & 0x01) != 1 || ((lsb >> 1) & 0x01) != 1) {
-    // D8, D7 and R1 bits are hardlocked to 1 -> a status msb bit 0 (bit 9 of status register) of 0 or lsb bit 1/7 = 0
-    // indicate device/communication issues, therefore mark component failed
-    this->error_code_ = MCP4461_STATUS_REGISTER_INVALID;
-    this->mark_failed();
-    return 0;
+
+  uint8_t tcon_value = 0;
+  if (connect_b) { tcon_value += 0b00000001; }
+  if (connect_w) { tcon_value += 0b00000010; }
+  if (connect_a) { tcon_value += 0b00000100; }
+
+  if (wiper == WIPER_1 || wiper == WIPER_3) {
+    tcon_value = tcon_value << 4;
+  }
+  ESP_LOGD(TAG, "Setting terminal connections - A:%s, W:%s, B:%s (TCON=0x%02X)",
+           connect_a ? "ON" : "OFF", connect_w ? "ON" : "OFF", connect_b ? "ON" : "OFF", tcon_value);
+
+  return this->write_tcon_register_(tcon_id, tcon_value);
+}
+
+// terminal w is connected to b.  To exit use set_terminal_connection_
+bool mcp4xxx_digipot_base_component::enter_shutdown_(MCP4XXXWiperID wiper) {
+  MCP4XXX_TCON_N tcon_id;
+  if (wiper == WIPER_0 || wiper == WIPER_1) {
+    tcon_id = MCP4XXX_TCON_N::MCP4XXX_TCON_0;
+
+  } else { // WIPER_2 and WIPER_3
+    tcon_id = MCP4XXX_TCON_N::MCP4XXX_TCON_1;
+  }
+
+  uint8_t tcon_value = 0b00010000;
+  if (wiper == WIPER_1 || wiper == WIPER_3) {
+    tcon_value = tcon_value << 4;
+  }
+  ESP_LOGD(TAG, "Enabling hardware shutdown of wiper, (TCON=0x%02X)", tcon_value);
+
+  return this->write_tcon_register_(tcon_id, tcon_value);
+}
+
+bool mcp4xxx_digipot_i2c_component::mcp4xxx_write_(const uint8_t *data, size_t len) {
+  return this->write(data, len) != i2c::ERROR_OK;
+}
+
+bool mcp4xxx_digipot_i2c_component::mcp4xxx_read_(uint8_t *data, size_t len) {
+  if (this->read(data, len) != i2c::ERROR_OK) {
+    ESP_LOGW(TAG, "Read failed");
+    this->status_set_warning();
+    return 1;
   }
   this->status_clear_warning();
-  return lsb;
+  return 0;
 }
 
-void mcp4xxx_digipot_base_component::read_status_register_to_log() {
-  uint8_t status_register_value = this->get_status_register_();
-  ESP_LOGI(TAG, "D7:  %u, WL3: %u, WL2: %u, EEWA: %u, WL1: %u, WL0: %u, R1: %u, WP: %u",
-           ((status_register_value >> 7) & 0x01), ((status_register_value >> 6) & 0x01),
-           ((status_register_value >> 5) & 0x01), ((status_register_value >> 4) & 0x01),
-           ((status_register_value >> 3) & 0x01), ((status_register_value >> 2) & 0x01),
-           ((status_register_value >> 1) & 0x01), ((status_register_value >> 0) & 0x01));
-}
-bool mcp4xxx_digipot_base_component::read_16_(uint8_t address, uint16_t *buf) {
-  // read 16 bits and convert from big endian to host,
-  // Do this as two separate operations to ensure a stop condition between the write and read
-  i2c::ErrorCode err = this->write(&address, 1);
-  if (err != i2c::ERROR_OK) {
-    return false;
-  }
-  err = this->read(reinterpret_cast<uint8_t *>(buf), 2);
-  if (err != i2c::ERROR_OK) {
-    return false;
-  }
-  *buf = convert_big_endian(*buf);
-  return true;
+void mcp4xxx_digipot_i2c_component::dump_config() {
+  this->dump_config_base();
+  LOG_I2C_DEVICE(this);
 }
 
-uint8_t mcp4xxx_digipot_base_component::get_wiper_address_(uint8_t wiper) {
-  uint8_t addr;
-  bool nonvolatile = false;
-  if (wiper > 3) {
-    nonvolatile = true;
-    wiper = wiper - 4;
-  }
-  switch (wiper) {
-    case 0:
-      addr = static_cast<uint8_t>(Mcp4461Addresses::MCP4461_VW0);
-      break;
-    case 1:
-      addr = static_cast<uint8_t>(Mcp4461Addresses::MCP4461_VW1);
-      break;
-    case 2:
-      addr = static_cast<uint8_t>(Mcp4461Addresses::MCP4461_VW2);
-      break;
-    case 3:
-      addr = static_cast<uint8_t>(Mcp4461Addresses::MCP4461_VW3);
-      break;
-    default:
-      ESP_LOGW(TAG, "unknown wiper specified");
-      return 0;
-  }
-  if (nonvolatile) {
-    addr = addr + 0x20;
-  }
-  return addr;
+inline void mcp4xxx_digipot_i2c_component::communication_init_() {
+  // N/A
 }
 
-uint16_t mcp4xxx_digipot_base_component::get_wiper_level_(Mcp4461WiperIdx wiper) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return 0;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  if (!(this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_DISABLED)));
-    return 0;
-  }
-  if (!(this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "reading from disabled volatile wiper %u, returning 0", wiper_idx);
-    return 0;
-  }
-  return this->read_wiper_level_(wiper_idx);
-}
+// bool mcp4xxx_digipot_spi_component::mcp4xxx_write_(const uint8_t *data, size_t len) {
+//   enable();
+//   write_array(data, len);
+//   disable();
+//   return false; // return 0 on success to match the i2c version
+// }
 
-uint16_t mcp4xxx_digipot_base_component::read_wiper_level_(uint8_t wiper_idx) {
-  uint8_t addr = this->get_wiper_address_(wiper_idx);
-  uint8_t reg = addr | static_cast<uint8_t>(Mcp4461Commands::READ);
-  if (wiper_idx > 3) {
-    if (!this->is_eeprom_ready_for_writing_(true)) {
-      return 0;
-    }
-  }
-  uint16_t buf = 0;
-  if (!(this->read_16_(reg, &buf))) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    ESP_LOGW(TAG, "Error fetching %swiper %u value", (wiper_idx > 3) ? "nonvolatile " : "", wiper_idx);
-    return 0;
-  }
-  return buf;
-}
+// bool mcp4xxx_digipot_spi_component::mcp4xxx_read_(uint8_t *data, size_t len) {
+//   this->enable();
+//   this->read_array(data, len);
+//   this->disable();
+//   return false; // return 0 on success to match the i2c version
+// }
 
-bool mcp4xxx_digipot_base_component::update_wiper_level_(Mcp4461WiperIdx wiper) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return false;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  if (!(this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_DISABLED)));
-    return false;
-  }
-  uint16_t data = this->get_wiper_level_(wiper);
-  ESP_LOGV(TAG, "Got value %u from wiper %u", data, wiper_idx);
-  this->reg_[wiper_idx].state = data;
-  return true;
-}
+// void mcp4xxx_digipot_spi_component::dump_config() {
+//   this->dump_config_base();
+// }
 
-bool mcp4xxx_digipot_base_component::set_wiper_level_(Mcp4461WiperIdx wiper, uint16_t value) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return false;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  if (value > 0x100) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_VALUE_INVALID)));
-    return false;
-  }
-  if (!(this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_DISABLED)));
-    return false;
-  }
-  if (this->reg_[wiper_idx].wiper_lock_active) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_LOCKED)));
-    return false;
-  }
-  ESP_LOGV(TAG, "Setting MCP4461 wiper %u to %u", wiper_idx, value);
-  this->reg_[wiper_idx].state = value;
-  this->reg_[wiper_idx].update_level = true;
-  return true;
-}
+// inline void mcp4xxx_digipot_spi_component::communication_init_() {
+//   this->spi_setup();
+// }
 
-void mcp4xxx_digipot_base_component::write_wiper_level_(uint8_t wiper, uint16_t value) {
-  bool nonvolatile = wiper > 3;
-  if (!(this->mcp4461_write_(this->get_wiper_address_(wiper), value, nonvolatile))) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    ESP_LOGW(TAG, "Error writing %swiper %u level %u", (wiper > 3) ? "nonvolatile " : "", wiper, value);
-  }
-}
+// // note to self. this makes me feel gross... consider going back to enum class
+// bool mcp4xxx_nonvolatile_memory::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value, bool nonvolatile) {
+//   if (nonvolatile) {
+//     switch (wiper) {
+//       case MCP4XXXWiperID::WIPER_0:
+//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW0;
+//         break;
+//       case MCP4XXXWiperID::WIPER_1:
+//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW1;
+//         break;
+//       case MCP4XXXWiperID::WIPER_2:
+//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW2;
+//         break;
+//       case MCP4XXXWiperID::WIPER_3:
+//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW3;
+//         break;
+//       default:
+//         ESP_LOGE(TAG, "Invalid volatile wiper specified for nonvolatile write");
+//         return false;
+//     }
+//   }
+//   return set_wiper_value_(wiper, value);
+// }
 
-void mcp4xxx_digipot_base_component::enable_wiper_(Mcp4461WiperIdx wiper) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  if ((this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_ENABLED)));
-    return;
-  }
-  if (this->reg_[wiper_idx].wiper_lock_active) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_LOCKED)));
-    return;
-  }
-  ESP_LOGV(TAG, "Enabling wiper %u", wiper_idx);
-  this->reg_[wiper_idx].enabled = true;
-  if (wiper_idx < 4) {
-    this->reg_[wiper_idx].terminal_hw = true;
-    this->reg_[wiper_idx].update_terminal = true;
-  }
-}
-
-void mcp4xxx_digipot_base_component::disable_wiper_(Mcp4461WiperIdx wiper) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  if (!(this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_DISABLED)));
-    return;
-  }
-  if (this->reg_[wiper_idx].wiper_lock_active) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_LOCKED)));
-    return;
-  }
-  ESP_LOGV(TAG, "Disabling wiper %u", wiper_idx);
-  this->reg_[wiper_idx].enabled = true;
-  if (wiper_idx < 4) {
-    this->reg_[wiper_idx].terminal_hw = true;
-    this->reg_[wiper_idx].update_terminal = true;
-  }
-}
-
-bool mcp4xxx_digipot_base_component::increase_wiper_(Mcp4461WiperIdx wiper) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return false;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  if (!(this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_DISABLED)));
-    return false;
-  }
-  if (this->reg_[wiper_idx].wiper_lock_active) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_LOCKED)));
-    return false;
-  }
-  if (this->reg_[wiper_idx].state == 256) {
-    ESP_LOGV(TAG, "Maximum wiper level reached, further increase of wiper %u prohibited", wiper_idx);
-    return false;
-  }
-  ESP_LOGV(TAG, "Increasing wiper %u", wiper_idx);
-  uint8_t addr = this->get_wiper_address_(wiper_idx);
-  uint8_t reg = addr | static_cast<uint8_t>(Mcp4461Commands::INCREMENT);
-  auto err = this->write(&this->address_, reg);
-  if (err != i2c::ERROR_OK) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    return false;
-  }
-  this->reg_[wiper_idx].state++;
-  return true;
-}
-
-bool mcp4xxx_digipot_base_component::decrease_wiper_(Mcp4461WiperIdx wiper) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return false;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  if (!(this->reg_[wiper_idx].enabled)) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_DISABLED)));
-    return false;
-  }
-  if (this->reg_[wiper_idx].wiper_lock_active) {
-    ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WIPER_LOCKED)));
-    return false;
-  }
-  if (this->reg_[wiper_idx].state == 0) {
-    ESP_LOGV(TAG, "Minimum wiper level reached, further decrease of wiper %u prohibited", wiper_idx);
-    return false;
-  }
-  ESP_LOGV(TAG, "Decreasing wiper %u", wiper_idx);
-  uint8_t addr = this->get_wiper_address_(wiper_idx);
-  uint8_t reg = addr | static_cast<uint8_t>(Mcp4461Commands::DECREMENT);
-  auto err = this->write(&this->address_, reg);
-  if (err != i2c::ERROR_OK) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    return false;
-  }
-  this->reg_[wiper_idx].state--;
-  return true;
-}
-
-uint8_t mcp4xxx_digipot_base_component::calc_terminal_connector_byte_(Mcp4461TerminalIdx terminal_connector) {
-  uint8_t i = static_cast<uint8_t>(terminal_connector) <= 1 ? 0 : 2;
-  uint8_t new_value_byte = 0;
-  new_value_byte += static_cast<uint8_t>(this->reg_[i].terminal_b);
-  new_value_byte += static_cast<uint8_t>(this->reg_[i].terminal_w) << 1;
-  new_value_byte += static_cast<uint8_t>(this->reg_[i].terminal_a) << 2;
-  new_value_byte += static_cast<uint8_t>(this->reg_[i].terminal_hw) << 3;
-  new_value_byte += static_cast<uint8_t>(this->reg_[(i + 1)].terminal_b) << 4;
-  new_value_byte += static_cast<uint8_t>(this->reg_[(i + 1)].terminal_w) << 5;
-  new_value_byte += static_cast<uint8_t>(this->reg_[(i + 1)].terminal_a) << 6;
-  new_value_byte += static_cast<uint8_t>(this->reg_[(i + 1)].terminal_hw) << 7;
-  return new_value_byte;
-}
-
-uint8_t mcp4xxx_digipot_base_component::get_terminal_register_(Mcp4461TerminalIdx terminal_connector) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return 0;
-  }
-  uint8_t reg = static_cast<uint8_t>(terminal_connector) == 0 ? static_cast<uint8_t>(Mcp4461Addresses::MCP4461_TCON0)
-                                                              : static_cast<uint8_t>(Mcp4461Addresses::MCP4461_TCON1);
-  reg |= static_cast<uint8_t>(Mcp4461Commands::READ);
-  uint16_t buf;
-  if (this->read_16_(reg, &buf)) {
-    return static_cast<uint8_t>(buf & 0x00ff);
-  } else {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    ESP_LOGW(TAG, "Error fetching terminal register value");
-    return 0;
-  }
-}
-
-void mcp4xxx_digipot_base_component::update_terminal_register_(Mcp4461TerminalIdx terminal_connector) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return;
-  }
-  if ((static_cast<uint8_t>(terminal_connector) != 0 && static_cast<uint8_t>(terminal_connector) != 1)) {
-    return;
-  }
-  uint8_t terminal_data = this->get_terminal_register_(terminal_connector);
-  if (terminal_data == 0) {
-    return;
-  }
-  ESP_LOGV(TAG, "Got terminal register %u data 0x%02X", static_cast<uint8_t>(terminal_connector), terminal_data);
-  uint8_t wiper_index = 0;
-  if (static_cast<uint8_t>(terminal_connector) == 1) {
-    wiper_index = 2;
-  }
-  this->reg_[wiper_index].terminal_b = ((terminal_data >> 0) & 0x01);
-  this->reg_[wiper_index].terminal_w = ((terminal_data >> 1) & 0x01);
-  this->reg_[wiper_index].terminal_a = ((terminal_data >> 2) & 0x01);
-  this->reg_[wiper_index].terminal_hw = ((terminal_data >> 3) & 0x01);
-  this->reg_[(wiper_index + 1)].terminal_b = ((terminal_data >> 4) & 0x01);
-  this->reg_[(wiper_index + 1)].terminal_w = ((terminal_data >> 5) & 0x01);
-  this->reg_[(wiper_index + 1)].terminal_a = ((terminal_data >> 6) & 0x01);
-  this->reg_[(wiper_index + 1)].terminal_hw = ((terminal_data >> 7) & 0x01);
-}
-
-bool mcp4xxx_digipot_base_component::set_terminal_register_(Mcp4461TerminalIdx terminal_connector, uint8_t data) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return false;
-  }
-  uint8_t addr;
-  if (static_cast<uint8_t>(terminal_connector) == 0) {
-    addr = static_cast<uint8_t>(Mcp4461Addresses::MCP4461_TCON0);
-  } else if (static_cast<uint8_t>(terminal_connector) == 1) {
-    addr = static_cast<uint8_t>(Mcp4461Addresses::MCP4461_TCON1);
-  } else {
-    ESP_LOGW(TAG, "Invalid terminal connector id %u specified", static_cast<uint8_t>(terminal_connector));
-    return false;
-  }
-  if (!(this->mcp4461_write_(addr, data))) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    return false;
-  }
-  return true;
-}
-
-void mcp4xxx_digipot_base_component::enable_terminal_(Mcp4461WiperIdx wiper, char terminal) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  ESP_LOGV(TAG, "Enabling terminal %c of wiper %u", terminal, wiper_idx);
-  switch (terminal) {
-    case 'h':
-      this->reg_[wiper_idx].terminal_hw = true;
-      break;
-    case 'a':
-      this->reg_[wiper_idx].terminal_a = true;
-      break;
-    case 'b':
-      this->reg_[wiper_idx].terminal_b = true;
-      break;
-    case 'w':
-      this->reg_[wiper_idx].terminal_w = true;
-      break;
-    default:
-      ESP_LOGW(TAG, "Unknown terminal %c specified", terminal);
-      return;
-  }
-  this->reg_[wiper_idx].update_terminal = false;
-}
-
-void mcp4xxx_digipot_base_component::disable_terminal_(Mcp4461WiperIdx wiper, char terminal) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return;
-  }
-  uint8_t wiper_idx = static_cast<uint8_t>(wiper);
-  ESP_LOGV(TAG, "Disabling terminal %c of wiper %u", terminal, wiper_idx);
-  switch (terminal) {
-    case 'h':
-      this->reg_[wiper_idx].terminal_hw = false;
-      break;
-    case 'a':
-      this->reg_[wiper_idx].terminal_a = false;
-      break;
-    case 'b':
-      this->reg_[wiper_idx].terminal_b = false;
-      break;
-    case 'w':
-      this->reg_[wiper_idx].terminal_w = false;
-      break;
-    default:
-      ESP_LOGW(TAG, "Unknown terminal %c specified", terminal);
-      return;
-  }
-  this->reg_[wiper_idx].update_terminal = false;
-}
-
-uint16_t mcp4xxx_digipot_base_component::get_eeprom_value(Mcp4461EepromLocation location) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return 0;
-  }
-  uint8_t reg = 0;
-  reg |= static_cast<uint8_t>(Mcp4461EepromLocation::MCP4461_EEPROM_1) + (static_cast<uint8_t>(location) * 0x10);
-  reg |= static_cast<uint8_t>(Mcp4461Commands::READ);
-  uint16_t buf;
-  if (!this->is_eeprom_ready_for_writing_(true)) {
-    return 0;
-  }
-  if (!this->read_16_(reg, &buf)) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    ESP_LOGW(TAG, "Error fetching EEPROM location value");
-    return 0;
-  }
-  return buf;
-}
-
-bool mcp4xxx_digipot_base_component::set_eeprom_value(Mcp4461EepromLocation location, uint16_t value) {
-  if (this->is_failed()) {
-    ESP_LOGE(TAG, "%s", LOG_STR_ARG(this->get_message_string(this->error_code_)));
-    return false;
-  }
-  uint8_t addr = 0;
-  if (value > 511) {
-    return false;
-  }
-  if (value > 256) {
-    addr = 1;
-  }
-  addr |= static_cast<uint8_t>(Mcp4461EepromLocation::MCP4461_EEPROM_1) + (static_cast<uint8_t>(location) * 0x10);
-  if (!(this->mcp4461_write_(addr, value, true))) {
-    this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    this->status_set_warning();
-    ESP_LOGW(TAG, "Error writing EEPROM value");
-    return false;
-  }
-  return true;
-}
-
-bool mcp4xxx_digipot_base_component::is_writing_() {
-  /* Read the EEPROM write-active status from the status register */
-  bool writing = static_cast<bool>((this->get_status_register_() >> 4) & 0x01);
-
-  /* If EEPROM is no longer writing, reset the timeout flag */
-  if (!writing) {
-    /* This is protected boolean flag in mcp4xxx_digipot_base_component class */
-    this->last_eeprom_write_timed_out_ = false;
-  }
-
-  return writing;
-}
-
-bool mcp4xxx_digipot_base_component::is_eeprom_ready_for_writing_(bool wait_if_not_ready) {
-  /* Check initial write status */
-  bool ready_for_write = !this->is_writing_();
-
-  /* Return early if no waiting is required or EEPROM is already ready */
-  if (ready_for_write || !wait_if_not_ready || this->last_eeprom_write_timed_out_) {
-    return ready_for_write;
-  }
-
-  /* Timestamp before starting the loop */
-  const uint32_t start_millis = millis();
-
-  ESP_LOGV(TAG, "Waiting until EEPROM is ready for write, start_millis = %" PRIu32, start_millis);
-
-  /* Loop until EEPROM is ready or timeout is reached */
-  while (!ready_for_write && ((millis() - start_millis) < EEPROM_WRITE_TIMEOUT_MS)) {
-    ready_for_write = !this->is_writing_();
-
-    /* If ready, exit early */
-    if (ready_for_write) {
-      ESP_LOGV(TAG, "EEPROM is ready for new write, elapsed_millis = %" PRIu32, millis() - start_millis);
-      return true;
-    }
-
-    /* Not ready yet, yield before checking again */
-    yield();
-  }
-
-  /* If still not ready after timeout, log error and mark the timeout */
-  ESP_LOGE(TAG, "EEPROM write timeout exceeded (%u ms)", EEPROM_WRITE_TIMEOUT_MS);
-  this->last_eeprom_write_timed_out_ = true;
-
-  return false;
-}
-
-bool mcp4xxx_digipot_base_component::mcp4461_write_(uint8_t addr, uint16_t data, bool nonvolatile) {
-  uint8_t reg = data > 0xff ? 1 : 0;
-  uint8_t value_byte = static_cast<uint8_t>(data & 0x00ff);
-  ESP_LOGV(TAG, "Writing value %u to address %u", data, addr);
-  reg |= addr;
-  reg |= static_cast<uint8_t>(Mcp4461Commands::WRITE);
-  if (nonvolatile) {
-    if (this->write_protected_) {
-      ESP_LOGW(TAG, "%s", LOG_STR_ARG(this->get_message_string(MCP4461_WRITE_PROTECTED)));
-      return false;
-    }
-    if (!this->is_eeprom_ready_for_writing_(true)) {
-      return false;
-    }
-  }
-  return this->write_byte(reg, value_byte);
-}
 }  // namespace mcp4xxx_digipot_base
 }  // namespace esphome

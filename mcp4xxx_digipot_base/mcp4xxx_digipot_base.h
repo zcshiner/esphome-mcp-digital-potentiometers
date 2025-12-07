@@ -3,162 +3,143 @@
 #include "esphome/core/component.h"
 #include "esphome/core/log.h"
 #include "esphome/components/i2c/i2c.h"
+// #include "esphome/components/spi/spi.h"
+#include "esphome/components/output/float_output.h"
 
 namespace esphome {
 namespace mcp4xxx_digipot_base {
 
-struct WiperState {
-  bool enabled = true;
-  uint16_t state = 0;
-  optional<float> initial_value;
-  bool terminal_a = true;
-  bool terminal_b = true;
-  bool terminal_w = true;
-  bool terminal_hw = true;
+// struct WiperState {
+//   bool enabled = true;
+//   uint16_t state = 0;
+//   optional<float> initial_value;
+//   bool terminal_a = true;
+//   bool terminal_b = true;
+//   bool terminal_w = true;
+//   bool terminal_hw = true;
+//   bool wiper_lock_active = false;
+//   bool level_is_stale = false;
+//   bool terminal_is_stale = false;
+// };
+
+struct NonvolatileWiperState {
+  uint16_t nv_wiper_value = 0;
   bool wiper_lock_active = false;
-  bool update_level = false;
-  bool update_terminal = false;
+  bool EEPROM_write_protected = false;
+  bool level_is_stale = true;
 };
 
-// default wiper state is 128 / 0x80h
-enum class Mcp4461Commands : uint8_t { WRITE = 0x00, INCREMENT = 0x04, DECREMENT = 0x08, READ = 0x0C };
-
-enum class Mcp4461Addresses : uint8_t {
-  MCP4461_VW0 = 0x00,
-  MCP4461_VW1 = 0x10,
-  MCP4461_VW2 = 0x60,
-  MCP4461_VW3 = 0x70,
-  MCP4461_STATUS = 0x50,
-  MCP4461_TCON0 = 0x40,
-  MCP4461_TCON1 = 0xA0,
-  MCP4461_EEPROM_1 = 0xB0
+enum MCP4XXXCommands : uint8_t {
+  WRITE = 0x00,
+  INCREMENT = 0x04,
+  DECREMENT = 0x08,
+  READ = 0x0C
 };
 
-enum class Mcp4461WiperIdx : uint8_t {
-  MCP4461_WIPER_0 = 0,
-  MCP4461_WIPER_1 = 1,
-  MCP4461_WIPER_2 = 2,
-  MCP4461_WIPER_3 = 3,
-  MCP4461_WIPER_4 = 4,
-  MCP4461_WIPER_5 = 5,
-  MCP4461_WIPER_6 = 6,
-  MCP4461_WIPER_7 = 7
+enum MCP4XXXAddresses : uint8_t {
+  MCP4XXX_VW0 = 0x00,
+  MCP4XXX_VW1 = 0x01,
+  MCP4XXX_NVW0 = 0x02,
+  MCP4XXX_NVW1 = 0x03,
+  MCP4XXX_TCON0 = 0x04,
+  MCP4XXX_STATUS = 0x05,
+  MCP4XXX_VW2 = 0x06,
+  MCP4XXX_VW3 = 0x07,
+  MCP4XXX_NVW2 = 0x08,
+  MCP4XXX_NVW3 = 0x09,
+  MCP4XXX_TCON1 = 0x0A
 };
 
-enum class Mcp4461EepromLocation : uint8_t {
-  MCP4461_EEPROM_0 = 0,
-  MCP4461_EEPROM_1 = 1,
-  MCP4461_EEPROM_2 = 2,
-  MCP4461_EEPROM_3 = 3,
-  MCP4461_EEPROM_4 = 4
+enum MCP4XXXWiperID : uint8_t {
+  WIPER_0 = MCP4XXXAddresses::MCP4XXX_VW0,
+  WIPER_1 = MCP4XXXAddresses::MCP4XXX_VW1,
+  WIPER_2 = MCP4XXXAddresses::MCP4XXX_VW2,
+  WIPER_3 = MCP4XXXAddresses::MCP4XXX_VW3
 };
 
-enum class Mcp4461TerminalIdx : uint8_t { MCP4461_TERMINAL_0 = 0, MCP4461_TERMINAL_1 = 1 };
+enum MCP4XXX_TCON_N : uint8_t {
+  MCP4XXX_TCON_0 = MCP4XXXAddresses::MCP4XXX_TCON0,
+  MCP4XXX_TCON_1 = MCP4XXXAddresses::MCP4XXX_TCON1
+};
 
-class Mcp4461Wiper;
-
-// mcp4xxx_digipot_base_component
-class mcp4xxx_digipot_base_component : public Component, public i2c::I2CDevice {
+class mcp4xxx_digipot_base_component : public Component {
  public:
+  mcp4xxx_digipot_base_component(uint16_t digipot_taps) : MCP4XXX_MAX_VALUE(digipot_taps) {}
   void setup() override;
-  void dump_config() override;
+  void dump_config_base();
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
-  void loop() override;
-  /// @brief get eeprom value from location
-  /// @param[in] location - eeprom location 0-4
-  /// @return eeprom value of specified location (9 bits max)
-  uint16_t get_eeprom_value(Mcp4461EepromLocation location);
-  /// @brief set eeprom value at specified location
-  /// @param[in] location - eeprom location 0-4
-  /// @param[in] value - 9 bits value to store
-  bool set_eeprom_value(Mcp4461EepromLocation location, uint16_t value);
-  /// @brief public function used to set initial value
-  /// @param[in] wiper - the wiper to set the value for
-  /// @param[in] initial_value - the initial value in range 0-1.0 as float
-  void set_initial_value(Mcp4461WiperIdx wiper, float initial_value);
-  /// @brief public function used to set disable terminal config
-  /// @param[in] wiper - the wiper to set the value for
-  /// @param[in] terminal - the terminal to disable, one of ['a','b','w','h']
-  void initialize_terminal_disabled(Mcp4461WiperIdx wiper, char terminal);
-  /// @brief fill me in
-  /// @param wiper 
-  void initialize_wiper_disabled(Mcp4461WiperIdx wiper);
-  /// @brief read status register to log
-  void read_status_register_to_log();
 
  protected:
-  friend class Mcp4461Wiper;
-  bool read_16_(uint8_t address, uint16_t *buf);
-  void update_write_protection_status_();
-  uint8_t get_wiper_address_(uint8_t wiper);
-  uint16_t read_wiper_level_(uint8_t wiper);
-  uint8_t get_status_register_();
-  uint16_t get_wiper_level_(Mcp4461WiperIdx wiper);
-  bool set_wiper_level_(Mcp4461WiperIdx wiper, uint16_t value);
-  bool update_wiper_level_(Mcp4461WiperIdx wiper);
-  void enable_wiper_(Mcp4461WiperIdx wiper);
-  void disable_wiper_(Mcp4461WiperIdx wiper);
-  bool increase_wiper_(Mcp4461WiperIdx wiper);
-  bool decrease_wiper_(Mcp4461WiperIdx wiper);
-  void enable_terminal_(Mcp4461WiperIdx wiper, char terminal);
-  void disable_terminal_(Mcp4461WiperIdx, char terminal);
-  bool is_writing_();
-  bool is_eeprom_ready_for_writing_(bool wait_if_not_ready);
-  void write_wiper_level_(uint8_t wiper, uint16_t value);
-  bool mcp4461_write_(uint8_t addr, uint16_t data, bool nonvolatile = false);
-  uint8_t calc_terminal_connector_byte_(Mcp4461TerminalIdx terminal_connector);
-  void update_terminal_register_(Mcp4461TerminalIdx terminal_connector);
-  uint8_t get_terminal_register_(Mcp4461TerminalIdx terminal_connector);
-  bool set_terminal_register_(Mcp4461TerminalIdx terminal_connector, uint8_t data);
-
-  // Converts a status to a human readable string
-  static const LogString *get_message_string(int status) {
-    switch (status) {
-      case MCP4461_STATUS_I2C_ERROR:
-        return LOG_STR("I2C error - communication with MCP4461 failed!");
-      case MCP4461_STATUS_REGISTER_ERROR:
-        return LOG_STR("Status register could not be read");
-      case MCP4461_STATUS_REGISTER_INVALID:
-        return LOG_STR("Invalid status register value - bits 1,7 or 8 are 0");
-      case MCP4461_VALUE_INVALID:
-        return LOG_STR("Invalid value for wiper given");
-      case MCP4461_WRITE_PROTECTED:
-        return LOG_STR("MCP4461 is write protected. Setting nonvolatile wipers/eeprom values is prohibited.");
-      case MCP4461_WIPER_ENABLED:
-        return LOG_STR("MCP4461 Wiper is already enabled, ignoring cmd to enable.");
-      case MCP4461_WIPER_DISABLED:
-        return LOG_STR("MCP4461 Wiper is disabled. All actions on this wiper are prohibited.");
-      case MCP4461_WIPER_LOCKED:
-        return LOG_STR("MCP4461 Wiper is locked using WiperLock-technology. All actions on this wiper are prohibited.");
-      case MCP4461_STATUS_OK:
-        return LOG_STR("Status OK");
-      default:
-        return LOG_STR("Unknown");
-    }
-  }
-
-  enum ErrorCode {
-    MCP4461_STATUS_OK = 0,               // CMD completed successfully
-    MCP4461_FAILED,                      // component failed
-    MCP4461_STATUS_I2C_ERROR,            // Unable to communicate with device
-    MCP4461_STATUS_REGISTER_INVALID,     // Status register value was invalid
-    MCP4461_STATUS_REGISTER_ERROR,       // Error fetching status register
-    MCP4461_PROHIBITED_FOR_NONVOLATILE,  //
-    MCP4461_VALUE_INVALID,               // Invalid value given for wiper / eeprom
-    MCP4461_WRITE_PROTECTED,  // The value was read, but the CRC over the payload (valid and data) does not match
-    MCP4461_WIPER_ENABLED,    // The wiper is enabled, discard additional enabling actions
-    MCP4461_WIPER_DISABLED,   // The wiper is disabled - all actions for this wiper will be aborted/discarded
-    MCP4461_WIPER_LOCKED,     // The wiper is locked using WiperLock-technology - all actions for this wiper will be
-                              // aborted/discarded
-  } error_code_{MCP4461_STATUS_OK};
-
-  WiperState reg_[8];
-  bool last_eeprom_write_timed_out_{false};
-  bool write_protected_{false};
-  bool wiper_0_disabled_{false};
-  bool wiper_1_disabled_{false};
-  bool wiper_2_disabled_{false};
-  bool wiper_3_disabled_{false};
+  friend class MCP4XXXWiper;
+  friend class mcp4xxx_nonvolatile_memory;
+  uint8_t create_command_byte_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits);
+  uint8_t create_data_byte_(uint16_t data_bits);
+  bool write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value);
+  bool set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value);
+  uint16_t read_wiper_value_(MCP4XXXWiperID wiper);
+  bool increment_wiper_(MCP4XXXWiperID wiper);
+  bool decrement_wiper_(MCP4XXXWiperID wiper);
+  bool set_terminal_connection_(MCP4XXXWiperID wiper, bool connect_a, bool connect_w, bool connect_b);
+  bool enter_shutdown_(MCP4XXXWiperID wiper);
+  virtual bool mcp4xxx_write_(const uint8_t *data, size_t len) = 0;
+  virtual bool mcp4xxx_read_(uint8_t *data, size_t len) = 0;
+  virtual void communication_init_() = 0;
+  uint16_t MCP4XXX_MAX_VALUE;
+  uint8_t current_wiper_value_{0};
 };
+
+// class mcp4xxx_nonvolatile_memory {
+//   bool set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value, bool nonvolatile);
+// };
+
+class mcp4xxx_digipot_i2c_component : public mcp4xxx_digipot_base_component, public i2c::I2CDevice {
+ using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
+ public:
+  bool mcp4xxx_write_(const uint8_t *data, size_t len) override;
+  bool mcp4xxx_read_(uint8_t *data, size_t len) override;
+  void dump_config() override;
+
+ protected:
+  void communication_init_() override;
+};
+
+// class mcp4xxx_digipot_spi_component : public mcp4xxx_digipot_base_component,
+//               public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW,
+//                      spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_200KHZ> {
+//  using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
+//  public:
+//   bool mcp4xxx_write_(const uint8_t *data, size_t len) override;
+//   bool mcp4xxx_read_(uint8_t *data, size_t len) override;
+//   void dump_config() override;
+
+// protected:
+//   void communication_init_() override;
+// };
+
+class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot_base_component> {
+ public:
+  MCP4XXXWiper(mcp4xxx_digipot_base_component *parent, MCP4XXXWiperID wiper) : parent_(parent), wiper_(wiper) {}
+  /// @brief Set level of wiper
+  /// @param[in] state - lkjh
+  void set_level(uint16_t level);
+  /// @brief Increase wiper by 1 tap
+  void increase_wiper();
+  /// @brief Decrease wiper by 1 tap
+  void decrease_wiper();
+  void set_terminals(bool con_a, bool con_w, bool con_b);
+  void enter_shutdown();
+  // void set_initial_conditions(float level, bool terminal_a, bool terminal_w, bool terminal_b);
+
+ protected:
+  void write_state(float state) override;
+
+  mcp4xxx_digipot_base_component *parent_;
+  MCP4XXXWiperID wiper_;
+  float state_;
+  // VolatileWiperState volatile_wiper_state_;
+
+};
+
+
 }  // namespace mcp4xxx_digipot_base
 }  // namespace esphome
