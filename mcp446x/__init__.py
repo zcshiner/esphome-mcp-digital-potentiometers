@@ -9,8 +9,7 @@ DEPENDENCIES = ["i2c"]
 AUTO_LOAD = ["mcp4xxx_digipot_base"]
 MULTI_CONF = True
 
-# NUM_DIGIPOTS = 4
-DIGIPOT_TAPS = 257 #8-bit
+DIGIPOT_TAPS = 256 #8-bit
 DEFAULT_ADDRESS = 0x2C
 
 # MCP446X ‘0101 1’b + A1:A0
@@ -42,6 +41,5 @@ CONFIG_SCHEMA = (
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID], DIGIPOT_TAPS)
-    config[mcp4xxx_digipot_base.CONF_NUM_DIGIPOTS] = 4
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)
