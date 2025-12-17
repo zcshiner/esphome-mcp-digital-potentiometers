@@ -72,8 +72,6 @@ class mcp4xxx_digipot_base_component : public Component {
  protected:
   friend class MCP4XXXWiper;
   friend class mcp4xxx_nonvolatile_memory;
-  uint8_t create_command_byte_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits);
-  uint8_t create_data_byte_(uint16_t data_bits);
   bool write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value);
   uint16_t read_tcon_register_(MCP4XXX_TCON_N tcon_id_);
   bool set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value);
@@ -85,11 +83,8 @@ class mcp4xxx_digipot_base_component : public Component {
   bool set_wiper_exit_shutdown_(MCP4XXXWiperID wiper);
   virtual bool write_mcp4xxx_register_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits = 0) = 0;
   virtual bool read_mcp4xxx_register_(MCP4XXXAddresses address, uint16_t *data) = 0;
-  // virtual bool mcp4xxx_write_(const uint8_t *data, size_t len) = 0;
-  // virtual bool mcp4xxx_read_(uint8_t *data, size_t len) = 0;
   virtual void communication_init_() = 0;
   uint16_t MCP4XXX_MAX_VALUE;
-  // uint8_t current_wiper_value_{0};
 };
 
 // class mcp4xxx_nonvolatile_memory {
@@ -99,8 +94,6 @@ class mcp4xxx_digipot_base_component : public Component {
 class mcp4xxx_digipot_i2c_component : public mcp4xxx_digipot_base_component, public i2c::I2CDevice {
  using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
  public:
-  // bool mcp4xxx_write_(const uint8_t *data, size_t len) override;
-  // bool mcp4xxx_read_(uint8_t *data, size_t len) override;
   void dump_config() override;
 
  protected:
@@ -114,8 +107,6 @@ class mcp4xxx_digipot_i2c_component : public mcp4xxx_digipot_base_component, pub
 //                      spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_200KHZ> {
 //  using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
 //  public:
-//   bool mcp4xxx_write_(const uint8_t *data, size_t len) override;
-//   bool mcp4xxx_read_(uint8_t *data, size_t len) override;
 //   void dump_config() override;
 
 // protected:

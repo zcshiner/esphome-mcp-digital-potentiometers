@@ -19,17 +19,6 @@ void mcp4xxx_digipot_base_component::dump_config_base() {
   ESP_LOGCONFIG(TAG, "mcp4461:");
 }
 
-// inline uint8_t mcp4xxx_digipot_base_component::create_command_byte_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits) {
-//   // Command byte format: AD3 AD2 AD1 AD0 C1 C0 D9 D8
-//   // Address bits: 7-4, Command bits: 3-2, Data bits: 1-0, D9 unused
-//   return (address << 4) | (command & 0x0C) | ((data_bits & 0x100) >> 8);
-// }
-
-// inline uint8_t mcp4xxx_digipot_base_component::create_data_byte_(uint16_t data_bits) {
-//   // Data byte format: D7 D6 D5 D4 D3 D2 D1 D0
-//   return static_cast<uint8_t>(data_bits & 0xFF);
-// }
-
 // volatile wiper only
 bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value) { //todo max value variable
   if (value > MCP4XXX_MAX_VALUE) {
@@ -39,8 +28,6 @@ bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint
   ESP_LOGD(TAG, "Setting wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
 
   this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::WRITE, value);
-
-  // ESP_LOGV(TAG, "Wrote wiper value: command=0x%02X, data=0x%02X", data[0], data[1]);
   return true;
 }
 
@@ -49,9 +36,7 @@ uint16_t mcp4xxx_digipot_base_component::read_wiper_value_(MCP4XXXWiperID wiper)
   uint16_t response;
   this->read_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(wiper), &response);
 
-  // ESP_LOGV(TAG, "Read wiper value: command=0x%02X, response=0x%02X.%02X",
-  //           command_byte, data[0], data[1]);
-
+  ESP_LOGD(TAG, "Read wiper %d got 0x%X", wiper, response);
   return response;
 }
 
@@ -80,16 +65,14 @@ uint16_t mcp4xxx_digipot_base_component::read_tcon_register_(MCP4XXX_TCON_N tcon
   uint16_t response;
   this->read_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(tcon_id_), &response);
 
-  // ESP_LOGV(TAG, "Read TCON register: command=0x%02X, response=0x%02X.%02X aka " BYTE_TO_BINARY_PATTERN BYTE_TO_BINARY_PATTERN,
-  //         command_byte, data[0], data[1], BYTE_TO_BINARY(data[0]), BYTE_TO_BINARY(data[1]));
+  ESP_LOGD(TAG, "Read 0x%X from TCON_%s", response, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
   return response;
 }
 
 bool mcp4xxx_digipot_base_component::write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value) {
   this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(tcon_id_), MCP4XXXCommands::WRITE, value);
-
-  // ESP_LOGV(TAG, "Wrote TCON register: command=0x%02X, data=0x%02X aka " BYTE_TO_BINARY_PATTERN BYTE_TO_BINARY_PATTERN,
-  //         data[0], data[1], BYTE_TO_BINARY(data[0]), BYTE_TO_BINARY(data[1]));
+  
+  ESP_LOGD(TAG, "Wrote 0x%X from TCON_%s", value, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
   return true;
 }
 
@@ -171,20 +154,24 @@ bool mcp4xxx_digipot_base_component::set_wiper_exit_shutdown_(MCP4XXXWiperID wip
   return this->write_tcon_register_(tcon_id, tcon_value);
 }
 
-bool mcp4xxx_digipot_i2c_component::write_mcp4xxx_register_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits) {
+bool mcp4xxx_digipot_i2c_component::write_mcp4xxx_register_(MCP4XXXAddresses address,
+                                                            MCP4XXXCommands command, uint16_t data_bits) {
   uint8_t data[2];
 
   // Command byte format: AD3 AD2 AD1 AD0 C1 C0 D9 D8
   // Address bits: 7-4, Command bits: 3-2, Data bits: 1-0, D9 unused
   data[0] = (address << 4) | (command & 0x0C) | ((data_bits & 0x100) >> 8);
 
-  // commands with no data send 1 byte
-  if (data_bits == 0) {
+  if (command == MCP4XXXCommands::INCREMENT || command == MCP4XXXCommands::DECREMENT) {
+    ESP_LOGV(TAG, "Wrote increment/decrement command: command=0x%02X 0b" BYTE_TO_BINARY_PATTERN,
+             data[0], BYTE_TO_BINARY(data[0]));
     return this->write(data, 1) != i2c::ERROR_OK;
 
   } else {
     // Data byte format: D7 D6 D5 D4 D3 D2 D1 D0
     data[1] = static_cast<uint8_t>(data_bits & 0xFF);
+    ESP_LOGV(TAG, "Wrote two bytes: data=0x%x 0b" BYTE_TO_BINARY_PATTERN "." BYTE_TO_BINARY_PATTERN,
+             data_bits, BYTE_TO_BINARY(data[0]), BYTE_TO_BINARY(data[1]));
     return this->write(data, 2) != i2c::ERROR_OK;
   }
 }
@@ -203,25 +190,13 @@ bool mcp4xxx_digipot_i2c_component::read_mcp4xxx_register_(MCP4XXXAddresses addr
     this->status_set_warning();
     return 1;
   }
+  ESP_LOGV(TAG, "Read register: command=0x%02X, response=0x%02X.%02X 0b" BYTE_TO_BINARY_PATTERN "." BYTE_TO_BINARY_PATTERN,
+            command_byte, buffer[0], buffer[1], BYTE_TO_BINARY(data[0]), BYTE_TO_BINARY(data[1]));
 
   this->status_clear_warning();
   *data = encode_uint16(buffer[0], buffer[1]);
   return 0;
 }
-
-// bool mcp4xxx_digipot_i2c_component::mcp4xxx_write_(const uint8_t *data, size_t len) {
-//   return this->write(data, len) != i2c::ERROR_OK;
-// }
-
-// bool mcp4xxx_digipot_i2c_component::mcp4xxx_read_(uint8_t *data, size_t len) {
-//   if (this->read(data, len) != i2c::ERROR_OK) {
-//     ESP_LOGW(TAG, "Read failed");
-//     this->status_set_warning();
-//     return 1;
-//   }
-//   this->status_clear_warning();
-//   return 0;
-// }
 
 void mcp4xxx_digipot_i2c_component::dump_config() {
   this->dump_config_base();
