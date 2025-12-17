@@ -74,6 +74,7 @@ class mcp4xxx_digipot_base_component : public Component {
   friend class mcp4xxx_nonvolatile_memory;
   bool write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value);
   uint16_t read_tcon_register_(MCP4XXX_TCON_N tcon_id_);
+  uint16_t read_status_register_();
   bool set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value);
   uint16_t read_wiper_value_(MCP4XXXWiperID wiper);
   bool increment_wiper_(MCP4XXXWiperID wiper);
@@ -81,6 +82,7 @@ class mcp4xxx_digipot_base_component : public Component {
   bool set_terminal_connection_(MCP4XXXWiperID wiper, bool connect_a, bool connect_w, bool connect_b);
   bool set_wiper_enter_shutdown_(MCP4XXXWiperID wiper);
   bool set_wiper_exit_shutdown_(MCP4XXXWiperID wiper);
+  bool EEPROM_write_active_();
   virtual bool write_mcp4xxx_register_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits = 0) = 0;
   virtual bool read_mcp4xxx_register_(MCP4XXXAddresses address, uint16_t *data) = 0;
   virtual void communication_init_() = 0;
@@ -102,17 +104,19 @@ class mcp4xxx_digipot_i2c_component : public mcp4xxx_digipot_base_component, pub
   void communication_init_() override;
 };
 
-// class mcp4xxx_digipot_spi_component : public mcp4xxx_digipot_base_component,
-//               public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW,
-//                      spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_200KHZ> {
-//  using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
-//  public:
-//   void dump_config() override;
+class mcp4xxx_digipot_spi_component : public mcp4xxx_digipot_base_component,
+              public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW,
+                     spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_200KHZ> {
+ using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
+ public:
+  void dump_config() override;
 
-// protected:
-//   write_mcp4xxx_register_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits) override;
-//   void communication_init_() override;
-// };
+protected:
+  bool check_spi_CMDERR_(uint8_t *data);
+  bool write_mcp4xxx_register_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits = 0) override;
+  bool read_mcp4xxx_register_(MCP4XXXAddresses address, uint16_t *data) override;
+  void communication_init_() override;
+};
 
 class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot_base_component> {
  public:

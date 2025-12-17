@@ -6,7 +6,6 @@ CODEOWNERS = ["@zcshiner"]
 MULTI_CONF = True
 
 CONF_NUM_DIGIPOTS = 'num_digipots'
-CONF_MCP4XXX_ID = "mcp4xxx_id"
 
 CONF_TERMINAL_A = "terminal_a"
 CONF_TERMINAL_B = "terminal_b"

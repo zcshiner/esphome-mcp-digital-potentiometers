@@ -2,9 +2,10 @@ import esphome.codegen as cg
 from esphome.components import output
 import esphome.config_validation as cv
 from esphome.const import CONF_CHANNEL, CONF_ID, CONF_INITIAL_VALUE
-from ..mcp4xxx_digipot_base import CONF_MCP4XXX_ID, CONF_TERMINAL_A, CONF_TERMINAL_B, CONF_TERMINAL_W, mcp4xxx_digipot_base_component, mcp4xxx_digipot_base_ns, MCP4XXXWiperID
+from ..mcp4xxx_digipot_base import CONF_TERMINAL_A, CONF_TERMINAL_B, CONF_TERMINAL_W, mcp4xxx_digipot_base_component, mcp4xxx_digipot_base_ns, MCP4XXXWiperID
 
 DEPENDENCIES = ["mcp4xxx_digipot_base"]
+CONF_MCP4XXX_ID = "mcp446x_id"
 
 mcp4xxx_wiper = mcp4xxx_digipot_base_ns.class_(
     "MCP4XXXWiper", output.FloatOutput, cg.Parented.template(mcp4xxx_digipot_base_component)
