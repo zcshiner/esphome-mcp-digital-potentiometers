@@ -170,8 +170,10 @@ bool mcp4xxx_digipot_base_component::set_wiper_exit_shutdown_(MCP4XXXWiperID wip
 bool mcp4xxx_digipot_base_component::EEPROM_write_active_() {
   uint16_t status = read_status_register_();
   uint16_t bitmask = 0b00010000;
+  bool is_write_active = (status & bitmask) == bitmask;
+  ESP_LOGD(TAG, "EEPROM write active: %s", is_write_active ? "YES" : "NO");
 
-  return (status & bitmask) == bitmask;
+  return is_write_active;
 }
 
 bool mcp4xxx_digipot_i2c_component::write_mcp4xxx_register_(MCP4XXXAddresses address,
@@ -212,7 +214,7 @@ bool mcp4xxx_digipot_i2c_component::read_mcp4xxx_register_(MCP4XXXAddresses addr
   }
   ESP_LOGV(TAG, "Read register: command=0x%02X, response=0x%02X.%02X 0b"
             BYTE_TO_BINARY_PATTERN "." BYTE_TO_BINARY_PATTERN,
-            command_byte, buffer[0], buffer[1], BYTE_TO_BINARY(data[0]), BYTE_TO_BINARY(data[1]));
+            command_byte, buffer[0], buffer[1], BYTE_TO_BINARY(buffer[0]), BYTE_TO_BINARY(buffer[1]));
 
   this->status_clear_warning();
   *data = encode_uint16(buffer[0], buffer[1]);
