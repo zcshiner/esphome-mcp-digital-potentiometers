@@ -68,6 +68,7 @@ class mcp4xxx_digipot_base_component : public Component {
   void setup() override;
   void dump_config_base();
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
+  uint16_t get_tap_count() const { return MCP4XXX_MAX_VALUE; }
 
  protected:
   friend class MCP4XXXWiper;
@@ -135,7 +136,7 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   void set_terminals(bool con_a, bool con_w, bool con_b);
   void enter_shutdown();
   void exit_shutdown();
-  // void set_initial_conditions(float level, bool terminal_a, bool terminal_w, bool terminal_b);
+  uint16_t get_tap_count() { return this->parent_->get_tap_count(); }
 
  protected:
   void write_state(float state) override;
