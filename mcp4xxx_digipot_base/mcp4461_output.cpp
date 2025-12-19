@@ -37,7 +37,6 @@ void MCP4XXXWiper::decrease_wiper_fast() {
 }
 
 uint16_t MCP4XXXWiper::increase_wiper() {
-  // consider doing a write-read? -z
   uint16_t wiper_value_ = this->parent_->read_wiper_value_(this->wiper_);
   if (wiper_value_ < this->parent_->MCP4XXX_MAX_VALUE) {
     this->increase_wiper_fast();

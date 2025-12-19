@@ -9,26 +9,14 @@
 namespace esphome {
 namespace mcp4xxx_digipot_base {
 
-// struct WiperState {
-//   bool enabled = true;
-//   uint16_t state = 0;
-//   optional<float> initial_value;
-//   bool terminal_a = true;
-//   bool terminal_b = true;
-//   bool terminal_w = true;
-//   bool terminal_hw = true;
+// struct NonvolatileWiperState {
+//   uint16_t nv_wiper_value = 0;
 //   bool wiper_lock_active = false;
-//   bool level_is_stale = false;
-//   bool terminal_is_stale = false;
+//   bool EEPROM_write_protected = false;
+//   bool level_is_stale = true;
 // };
 
-struct NonvolatileWiperState {
-  uint16_t nv_wiper_value = 0;
-  bool wiper_lock_active = false;
-  bool EEPROM_write_protected = false;
-  bool level_is_stale = true;
-};
-
+// Commands Bits C1 C0
 enum MCP4XXXCommands : uint8_t {
   WRITE = 0x00,
   INCREMENT = 0x04,
@@ -36,6 +24,7 @@ enum MCP4XXXCommands : uint8_t {
   READ = 0x0C
 };
 
+// Memory Addresses A3 A2 A1 A0, not all devices have all registers
 enum MCP4XXXAddresses : uint8_t {
   MCP4XXX_VW0 = 0x00,
   MCP4XXX_VW1 = 0x01,
@@ -50,6 +39,7 @@ enum MCP4XXXAddresses : uint8_t {
   MCP4XXX_TCON1 = 0x0A
 };
 
+// Wiper Identifiers, not all devices have all 4 wipers
 enum MCP4XXXWiperID : uint8_t {
   WIPER_0 = MCP4XXXAddresses::MCP4XXX_VW0,
   WIPER_1 = MCP4XXXAddresses::MCP4XXX_VW1,
@@ -57,6 +47,7 @@ enum MCP4XXXWiperID : uint8_t {
   WIPER_3 = MCP4XXXAddresses::MCP4XXX_VW3
 };
 
+// Terminal Connection Registers, not all devices have both TCON registers
 enum MCP4XXX_TCON_N : uint8_t {
   MCP4XXX_TCON_0 = MCP4XXXAddresses::MCP4XXX_TCON0,
   MCP4XXX_TCON_1 = MCP4XXXAddresses::MCP4XXX_TCON1
@@ -68,6 +59,8 @@ class mcp4xxx_digipot_base_component : public Component {
   void setup() override;
   void dump_config_base();
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
+  /// @brief Get maximum tap position of wiper, either 7 or 8 bit
+  /// @return Maximum tap position as integer
   uint16_t get_tap_count() const { return MCP4XXX_MAX_VALUE; }
 
  protected:
@@ -123,7 +116,7 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
  public:
   MCP4XXXWiper(mcp4xxx_digipot_base_component *parent, MCP4XXXWiperID wiper) : parent_(parent), wiper_(wiper) {}
   /// @brief Set level of wiper
-  /// @param[in] state - lkjh
+  /// @param[in] state float value between 0.0 and 1.0
   void set_wiper_level(uint16_t level);
   /// @brief Increase wiper by 1 tap, until max value is reached
   uint16_t increase_wiper();
@@ -133,9 +126,16 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   void increase_wiper_fast();
   /// @brief Decrease wiper by 1 tap blindly
   void decrease_wiper_fast();
+  /// @brief Set terminal connections
+  /// @param con_a Terminal A connection state
+  /// @param con_w Terminal W connection state
+  /// @param con_b Terminal B connection state
   void set_terminals(bool con_a, bool con_w, bool con_b);
+  /// @brief Put wiper into shutdown mode
   void enter_shutdown();
+  /// @brief Wake wiper from shutdown mode
   void exit_shutdown();
+  /// @brief Get maximum tap position of wiper, either 7 or 8 bit
   uint16_t get_tap_count() { return this->parent_->get_tap_count(); }
 
  protected:
@@ -143,7 +143,6 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
 
   mcp4xxx_digipot_base_component *parent_;
   MCP4XXXWiperID wiper_;
-  // VolatileWiperState volatile_wiper_state_;
 
 };
 

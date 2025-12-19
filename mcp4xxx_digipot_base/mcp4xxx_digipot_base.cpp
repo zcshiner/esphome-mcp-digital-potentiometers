@@ -19,7 +19,7 @@ void mcp4xxx_digipot_base_component::dump_config_base() {
   ESP_LOGCONFIG(TAG, "mcp4461:");
 }
 
-// volatile wiper only
+// volatile wipers only
 bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value) { //todo max value variable
   if (value > MCP4XXX_MAX_VALUE) {
     ESP_LOGE(TAG, "Invalid wiper value: %d (max: %d)", value, MCP4XXX_MAX_VALUE);
@@ -64,7 +64,6 @@ uint16_t mcp4xxx_digipot_base_component::read_tcon_register_(MCP4XXX_TCON_N tcon
   this->read_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(tcon_id_), &response);
 
   ESP_LOGD(TAG, "Read 0x%X from TCON_%s", response, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
-  // verbose log to break out bits?
   return response;
 }
 
@@ -72,7 +71,6 @@ bool mcp4xxx_digipot_base_component::write_tcon_register_(MCP4XXX_TCON_N tcon_id
   this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(tcon_id_), MCP4XXXCommands::WRITE, value);
   
   ESP_LOGD(TAG, "Wrote 0x%X from TCON_%s", value, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
-  // verbose log to break out bits?
   return true;
 }
 
@@ -84,7 +82,6 @@ uint16_t mcp4xxx_digipot_base_component::read_status_register_() {
   }
 
   ESP_LOGD(TAG, "Read 0x%X from STATUS", response);
-  // verbose log to break out bits?
   return response;
 }
 
@@ -228,17 +225,16 @@ void mcp4xxx_digipot_i2c_component::dump_config() {
 
 inline void mcp4xxx_digipot_i2c_component::communication_init_() {
   if (this->write(nullptr, 0)) {
-    // this->error_code_ = MCP4461_STATUS_I2C_ERROR;
-    ESP_LOGE(TAG, "Communication with device failed during setup");
+    ESP_LOGE(TAG, "Comm failed during setup");
     this->mark_failed();
-    // return;
   }
 }
 
 bool mcp4xxx_digipot_spi_component::check_spi_CMDERR_(uint8_t *data) {
   // // check response for error, it's always in the first byte
   uint8_t error_code = (data[0] & 0b00000010) >> 1;
-  ESP_LOGV(TAG, "SPI CMDERR check: response=0b" BYTE_TO_BINARY_PATTERN ", CMDERR=%d", BYTE_TO_BINARY(data[0]), error_code);
+  ESP_LOGV(TAG, "SPI CMDERR check: response=0b" BYTE_TO_BINARY_PATTERN ", CMDERR=%d",
+           BYTE_TO_BINARY(data[0]), error_code);
   if (error_code == 0) {
     ESP_LOGW(TAG, "Write command returned CMDERR");
     return true; // return non-zero on failure
@@ -252,6 +248,7 @@ bool mcp4xxx_digipot_spi_component::write_mcp4xxx_register_(MCP4XXXAddresses add
 
   // Command byte format: AD3 AD2 AD1 AD0 C1 C0 D9 D8
   // Address bits: 7-4, Command bits: 3-2, Data bits: 1-0, D9 unused
+  // With SPI methods, we need to set D9 to 1 for multiplexed SDI/SDO pin use
   buffer[0] = (address << 4) | (command & 0x0C) | 0x02 | ((data_bits & 0x100) >> 8);
   
   this->enable();
@@ -277,6 +274,7 @@ bool mcp4xxx_digipot_spi_component::read_mcp4xxx_register_(MCP4XXXAddresses addr
 
   // Command byte format: AD3 AD2 AD1 AD0 C1 C0 D9 D8
   // Address bits: 7-4, Command bits: 3-2, Data bits: 1-0, D9 unused
+  // With SPI methods, we need to set D9 through D0 to 1 for multiplexed SDI/SDO pin use
   buffer[0] = (address << 4) | (MCP4XXXCommands::READ & 0x0C) | 0x03;
 
   ESP_LOGV(TAG, "Buffer before read: 0x%02X.%02X 0b"
