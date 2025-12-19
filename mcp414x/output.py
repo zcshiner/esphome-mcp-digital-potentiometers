@@ -13,7 +13,6 @@ mcp4xxx_wiper = mcp4xxx_digipot_base_ns.class_(
 
 CHANNEL_OPTIONS = {
     '0': MCP4XXXWiperID.WIPER_0,
-    '1': MCP4XXXWiperID.WIPER_1,
 }
 
 CONFIG_SCHEMA = output.FLOAT_OUTPUT_SCHEMA.extend(
