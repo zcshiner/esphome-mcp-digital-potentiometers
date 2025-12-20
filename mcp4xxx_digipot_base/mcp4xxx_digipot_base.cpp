@@ -19,8 +19,7 @@ void mcp4xxx_digipot_base_component::dump_config_base() {
   ESP_LOGCONFIG(TAG, "mcp4461:");
 }
 
-// volatile wipers only
-bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value) { //todo max value variable
+bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value) {
   if (value > MCP4XXX_MAX_VALUE) {
     ESP_LOGE(TAG, "Invalid wiper value: %d (max: %d)", value, MCP4XXX_MAX_VALUE);
     return false;
@@ -303,30 +302,6 @@ void mcp4xxx_digipot_spi_component::dump_config() {
 inline void mcp4xxx_digipot_spi_component::communication_init_() {
   this->spi_setup();
 }
-
-// // note to self. this makes me feel gross... consider going back to enum class
-// bool mcp4xxx_nonvolatile_memory::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value, bool nonvolatile) {
-//   if (nonvolatile) {
-//     switch (wiper) {
-//       case MCP4XXXWiperID::WIPER_0:
-//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW0;
-//         break;
-//       case MCP4XXXWiperID::WIPER_1:
-//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW1;
-//         break;
-//       case MCP4XXXWiperID::WIPER_2:
-//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW2;
-//         break;
-//       case MCP4XXXWiperID::WIPER_3:
-//         wiper = (MCP4XXXWiperID)MCP4XXXAddresses::MCP4XXX_NVW3;
-//         break;
-//       default:
-//         ESP_LOGE(TAG, "Invalid volatile wiper specified for nonvolatile write");
-//         return false;
-//     }
-//   }
-//   return set_wiper_value_(wiper, value);
-// }
 
 }  // namespace mcp4xxx_digipot_base
 }  // namespace esphome

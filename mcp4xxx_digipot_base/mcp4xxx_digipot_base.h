@@ -9,13 +9,6 @@
 namespace esphome {
 namespace mcp4xxx_digipot_base {
 
-// struct NonvolatileWiperState {
-//   uint16_t nv_wiper_value = 0;
-//   bool wiper_lock_active = false;
-//   bool EEPROM_write_protected = false;
-//   bool level_is_stale = true;
-// };
-
 // Commands Bits C1 C0
 enum MCP4XXXCommands : uint8_t {
   WRITE = 0x00,
@@ -83,10 +76,6 @@ class mcp4xxx_digipot_base_component : public Component {
   uint16_t MCP4XXX_MAX_VALUE;
 };
 
-// class mcp4xxx_nonvolatile_memory {
-//   bool set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value, bool nonvolatile);
-// };
-
 class mcp4xxx_digipot_i2c_component : public mcp4xxx_digipot_base_component, public i2c::I2CDevice {
  using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
  public:
@@ -145,7 +134,6 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   MCP4XXXWiperID wiper_;
 
 };
-
 
 }  // namespace mcp4xxx_digipot_base
 }  // namespace esphome

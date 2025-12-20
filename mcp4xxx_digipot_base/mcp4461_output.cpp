@@ -41,7 +41,8 @@ uint16_t MCP4XXXWiper::increase_wiper() {
   if (wiper_value_ < this->parent_->MCP4XXX_MAX_VALUE) {
     this->increase_wiper_fast();
     wiper_value_++;
-    ESP_LOGD(TAG, "Increased wiper %d to tap %d of %d", static_cast<uint8_t>(this->wiper_), wiper_value_, this->parent_->MCP4XXX_MAX_VALUE);
+    ESP_LOGD(TAG, "Increased wiper %d to tap %d of %d", static_cast<uint8_t>(this->wiper_),
+             wiper_value_, this->parent_->MCP4XXX_MAX_VALUE);
   } else {
     ESP_LOGW(TAG, "Unable to increment wiper %u. Already at max level.", static_cast<uint8_t>(this->wiper_));
   }
@@ -53,7 +54,8 @@ uint16_t MCP4XXXWiper::decrease_wiper() {
   if (wiper_value_ > 0) {
     this->decrease_wiper_fast();
     wiper_value_--;
-    ESP_LOGD(TAG, "Decreased wiper %d to tap %d of %d", static_cast<uint8_t>(this->wiper_), wiper_value_, this->parent_->MCP4XXX_MAX_VALUE);
+    ESP_LOGD(TAG, "Decreased wiper %d to tap %d of %d", static_cast<uint8_t>(this->wiper_),
+             wiper_value_, this->parent_->MCP4XXX_MAX_VALUE);
   } else {
     ESP_LOGW(TAG, "Unable to decrement wiper %u.  Already at min level.", static_cast<uint8_t>(this->wiper_));
   }
