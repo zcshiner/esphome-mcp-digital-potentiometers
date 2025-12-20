@@ -49,7 +49,6 @@ class mcp4xxx_digipot_base_component : public Component {
  public:
   mcp4xxx_digipot_base_component(uint16_t digipot_taps) : MCP4XXX_MAX_VALUE(digipot_taps) {}
   void setup() override;
-  void dump_config_base();
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
   /// @brief Get maximum tap position of wiper, either 7 or 8 bit
   /// @return Maximum tap position as integer
@@ -58,6 +57,7 @@ class mcp4xxx_digipot_base_component : public Component {
  protected:
   friend class MCP4XXXWiper;
   friend class mcp4xxx_nonvolatile_memory;
+  void dump_config_base_();
   bool write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value);
   uint16_t read_tcon_register_(MCP4XXX_TCON_N tcon_id_);
   uint16_t read_status_register_();
@@ -74,11 +74,6 @@ class mcp4xxx_digipot_base_component : public Component {
   virtual void communication_init_() = 0;
   uint16_t MCP4XXX_MAX_VALUE;
 };
-
-// I2C and SPI concrete component classes have been moved to their own headers
-// `mcp4xxx_digipot_i2c/mcp4xxx_digipot_i2c.h` and
-// `mcp4xxx_digipot_spi/mcp4xxx_digipot_spi.h` to keep transport-specific code
-// separated. Include those headers where needed.
 
 class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot_base::mcp4xxx_digipot_base_component> {
  public:

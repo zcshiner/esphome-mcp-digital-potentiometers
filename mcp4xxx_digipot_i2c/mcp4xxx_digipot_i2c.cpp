@@ -56,7 +56,7 @@ bool mcp4xxx_digipot_i2c_component::read_mcp4xxx_register_(mcp4xxx_digipot_base:
 }
 
 void mcp4xxx_digipot_i2c_component::dump_config() {
-  this->dump_config_base();
+  this->dump_config_base_();
   LOG_I2C_DEVICE(this);
 }
 

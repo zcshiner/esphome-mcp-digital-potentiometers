@@ -1,5 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome.const import CONF_INITIAL_VALUE
 
 CODEOWNERS = ["@zcshiner"]
 
@@ -18,3 +19,11 @@ BASE_CONFIG_SCHEMA = (
     .extend(cv.COMPONENT_SCHEMA)
 )
 
+OUTPUT_OPTIONAL_CONFIG_SCHEMA = cv.Schema(
+    {
+        cv.Optional(CONF_TERMINAL_A, default=True): cv.boolean,
+        cv.Optional(CONF_TERMINAL_B, default=True): cv.boolean,
+        cv.Optional(CONF_TERMINAL_W, default=True): cv.boolean,
+        cv.Optional(CONF_INITIAL_VALUE, default=0.5): cv.float_range(min=0.0, max=1.0),
+    }
+)

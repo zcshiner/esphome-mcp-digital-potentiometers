@@ -76,7 +76,8 @@ bool mcp4xxx_digipot_spi_component::read_mcp4xxx_register_(mcp4xxx_digipot_base:
 }
 
 void mcp4xxx_digipot_spi_component::dump_config() {
-  this->dump_config_base();
+  this->dump_config_base_();
+  LOG_PIN("  CS Pin: ", this->cs_);
 }
 
 inline void mcp4xxx_digipot_spi_component::communication_init_() {

@@ -10,13 +10,16 @@ static const char *const TAG = "mcp4xxx_digipot_base";
 // constexpr uint8_t EEPROM_WRITE_TIMEOUT_MS = 10;
 
 void mcp4xxx_digipot_base_component::setup() { 
-  ESP_LOGD(TAG, "Setting up MCP4XXX");
+  ESP_LOGD(TAG, "Setting up");
   this->communication_init_();
-  ESP_LOGV(TAG, "Setup finished");
+  ESP_LOGVV(TAG, "Setup finished");
 }
 
-void mcp4xxx_digipot_base_component::dump_config_base() {
-  ESP_LOGCONFIG(TAG, "mcp4461:");
+void mcp4xxx_digipot_base_component::dump_config_base_() {
+  ESP_LOGCONFIG(TAG,
+                "MCP4XXX Digipot Base:\n"
+                "  Wiper Tap Count: %d",
+                this->MCP4XXX_MAX_VALUE);
 }
 
 bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value) {
