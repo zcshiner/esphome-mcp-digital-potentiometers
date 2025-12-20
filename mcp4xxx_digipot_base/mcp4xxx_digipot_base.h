@@ -2,8 +2,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/core/log.h"
-#include "esphome/components/i2c/i2c.h"
-#include "esphome/components/spi/spi.h"
+#include "esphome/core/helpers.h"
 #include "esphome/components/output/float_output.h"
 
 namespace esphome {
@@ -76,32 +75,12 @@ class mcp4xxx_digipot_base_component : public Component {
   uint16_t MCP4XXX_MAX_VALUE;
 };
 
-class mcp4xxx_digipot_i2c_component : public mcp4xxx_digipot_base_component, public i2c::I2CDevice {
- using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
- public:
-  void dump_config() override;
+// I2C and SPI concrete component classes have been moved to their own headers
+// `mcp4xxx_digipot_i2c/mcp4xxx_digipot_i2c.h` and
+// `mcp4xxx_digipot_spi/mcp4xxx_digipot_spi.h` to keep transport-specific code
+// separated. Include those headers where needed.
 
- protected:
-  bool write_mcp4xxx_register_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits = 0) override;
-  bool read_mcp4xxx_register_(MCP4XXXAddresses address, uint16_t *data) override;
-  void communication_init_() override;
-};
-
-class mcp4xxx_digipot_spi_component : public mcp4xxx_digipot_base_component,
-              public spi::SPIDevice<spi::BIT_ORDER_MSB_FIRST, spi::CLOCK_POLARITY_LOW,
-                     spi::CLOCK_PHASE_LEADING, spi::DATA_RATE_200KHZ> {
- using mcp4xxx_digipot_base_component::mcp4xxx_digipot_base_component;
- public:
-  void dump_config() override;
-
-protected:
-  bool check_spi_CMDERR_(uint8_t *data);
-  bool write_mcp4xxx_register_(MCP4XXXAddresses address, MCP4XXXCommands command, uint16_t data_bits = 0) override;
-  bool read_mcp4xxx_register_(MCP4XXXAddresses address, uint16_t *data) override;
-  void communication_init_() override;
-};
-
-class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot_base_component> {
+class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot_base::mcp4xxx_digipot_base_component> {
  public:
   MCP4XXXWiper(mcp4xxx_digipot_base_component *parent, MCP4XXXWiperID wiper) : parent_(parent), wiper_(wiper) {}
   /// @brief Set level of wiper

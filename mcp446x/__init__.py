@@ -1,12 +1,12 @@
 import esphome.codegen as cg
 from esphome.components import i2c
 import esphome.config_validation as cv
-from .. import mcp4xxx_digipot_base
+from .. import mcp4xxx_digipot_base, mcp4xxx_digipot_i2c
 from esphome.const import CONF_ID, CONF_ADDRESS
 
 CODEOWNERS = ["@zcshiner"]
 DEPENDENCIES = ["i2c"]
-AUTO_LOAD = ["mcp4xxx_digipot_base"]
+AUTO_LOAD = ["mcp4xxx_digipot_i2c"]
 MULTI_CONF = True
 
 DIGIPOT_TAPS = 256 #8-bit
@@ -21,7 +21,7 @@ I2C_ADDRESS_OPTIONS = [
 ]
 
 mcp446x_ns = cg.esphome_ns.namespace("mcp446x")
-mcp446X = mcp446x_ns.class_("MCP446X", mcp4xxx_digipot_base.mcp4xxx_digipot_i2c_component)
+mcp446X = mcp446x_ns.class_("MCP446X", mcp4xxx_digipot_i2c.mcp4xxx_digipot_i2c_component)
 
 CONFIG_SCHEMA = (
     cv.Schema(

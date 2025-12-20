@@ -1,18 +1,18 @@
 import esphome.codegen as cg
 from esphome.components import spi
 import esphome.config_validation as cv
-from .. import mcp4xxx_digipot_base
+from .. import mcp4xxx_digipot_base, mcp4xxx_digipot_spi
 from esphome.const import CONF_ID
 
 CODEOWNERS = ["@zcshiner"]
 DEPENDENCIES = ["spi"]
-AUTO_LOAD = ["mcp4xxx_digipot_base"]
+AUTO_LOAD = ["mcp4xxx_digipot_spi"]
 MULTI_CONF = True
 
 DIGIPOT_TAPS = 128 #7-bit
 
 mcp414x_ns = cg.esphome_ns.namespace("mcp414x")
-mcp414x = mcp414x_ns.class_("MCP414X", mcp4xxx_digipot_base.mcp4xxx_digipot_spi_component)
+mcp414x = mcp414x_ns.class_("MCP414X", mcp4xxx_digipot_spi.mcp4xxx_digipot_spi_component)
 
 CONFIG_SCHEMA = (
     cv.Schema(

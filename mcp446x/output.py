@@ -4,7 +4,7 @@ import esphome.config_validation as cv
 from esphome.const import CONF_CHANNEL, CONF_ID, CONF_INITIAL_VALUE
 from ..mcp4xxx_digipot_base import CONF_TERMINAL_A, CONF_TERMINAL_B, CONF_TERMINAL_W, mcp4xxx_digipot_base_component, mcp4xxx_digipot_base_ns, MCP4XXXWiperID
 
-DEPENDENCIES = ["mcp4xxx_digipot_base"]
+DEPENDENCIES = ["mcp4xxx_digipot_i2c"]
 CONF_MCP4XXX_ID = "mcp446x_id"
 
 mcp4xxx_wiper = mcp4xxx_digipot_base_ns.class_(
