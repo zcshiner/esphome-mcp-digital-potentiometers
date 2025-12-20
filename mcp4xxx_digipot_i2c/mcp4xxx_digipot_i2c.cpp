@@ -42,7 +42,7 @@ bool mcp4xxx_digipot_i2c_component::read_mcp4xxx_register_(mcp4xxx_digipot_base:
   this->write(&command_byte, 1);
 
   if (this->read(buffer, 2) != i2c::ERROR_OK) {
-    ESP_LOGW(TAG, "Read failed");
+    ESP_LOGE(TAG, "Read failed");
     this->status_set_warning();
     return 1;
   }

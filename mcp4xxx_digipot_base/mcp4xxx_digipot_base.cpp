@@ -27,7 +27,7 @@ bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint
     ESP_LOGE(TAG, "Invalid wiper value: %d (max: %d)", value, MCP4XXX_MAX_VALUE);
     return false;
   }
-  ESP_LOGD(TAG, "Setting wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
+  ESP_LOGV(TAG, "Setting wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
 
   this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::WRITE, value);
   return true;
@@ -38,14 +38,14 @@ uint16_t mcp4xxx_digipot_base_component::read_wiper_value_(MCP4XXXWiperID wiper)
   uint16_t response;
   this->read_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(wiper), &response);
 
-  ESP_LOGD(TAG, "Read wiper %d got 0x%X", wiper, response);
+  ESP_LOGV(TAG, "Read wiper %d got 0x%X", wiper, response);
   return response;
 }
 
 bool mcp4xxx_digipot_base_component::increment_wiper_(MCP4XXXWiperID wiper) {
 
   if (this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::INCREMENT)) {
-    ESP_LOGD(TAG, "Incremented wiper toward terminal A");
+    ESP_LOGV(TAG, "Incremented wiper toward terminal A");
     return true;
   }
   return false;
@@ -54,7 +54,7 @@ bool mcp4xxx_digipot_base_component::increment_wiper_(MCP4XXXWiperID wiper) {
 bool mcp4xxx_digipot_base_component::decrement_wiper_(MCP4XXXWiperID wiper) {
 
   if (this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::DECREMENT)) {
-    ESP_LOGD(TAG, "Decremented wiper toward terminal B");
+    ESP_LOGV(TAG, "Decremented wiper toward terminal B");
     return true;
   }
   return false;
@@ -65,14 +65,14 @@ uint16_t mcp4xxx_digipot_base_component::read_tcon_register_(MCP4XXX_TCON_N tcon
   uint16_t response;
   this->read_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(tcon_id_), &response);
 
-  ESP_LOGD(TAG, "Read 0x%X from TCON_%s", response, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
+  ESP_LOGV(TAG, "Read 0x%X from TCON_%s", response, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
   return response;
 }
 
 bool mcp4xxx_digipot_base_component::write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value) {
   this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(tcon_id_), MCP4XXXCommands::WRITE, value);
   
-  ESP_LOGD(TAG, "Wrote 0x%X from TCON_%s", value, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
+  ESP_LOGV(TAG, "Wrote 0x%X from TCON_%s", value, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
   return true;
 }
 
@@ -83,7 +83,7 @@ uint16_t mcp4xxx_digipot_base_component::read_status_register_() {
     ESP_LOGW(TAG, "Failed to read STATUS");
   }
 
-  ESP_LOGD(TAG, "Read 0x%X from STATUS", response);
+  ESP_LOGV(TAG, "Read 0x%X from STATUS", response);
   return response;
 }
 

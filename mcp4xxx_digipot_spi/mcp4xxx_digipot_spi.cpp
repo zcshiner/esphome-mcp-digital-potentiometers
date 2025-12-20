@@ -14,7 +14,7 @@ bool mcp4xxx_digipot_spi_component::check_spi_CMDERR_(uint8_t *data) {
   ESP_LOGV(TAG, "SPI CMDERR check: response=0b" BYTE_TO_BINARY_PATTERN ", CMDERR=%d",
            BYTE_TO_BINARY(data[0]), error_code);
   if (error_code == 0) {
-    ESP_LOGW(TAG, "Write command returned CMDERR");
+    ESP_LOGE(TAG, "Write command returned CMDERR");
     return true; // return non-zero on failure
   }
   return false; // return 0 on success
