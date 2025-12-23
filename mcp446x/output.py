@@ -27,7 +27,7 @@ CONFIG_SCHEMA = (
             cv.Required(CONF_CHANNEL): cv.enum(CHANNEL_OPTIONS, upper=True)
         }
     )
-    # .extend(mcp4xxx_digipot_base.OUTPUT_OPTIONAL_CONFIG_SCHEMA)
+    .extend(mcp4xxx_digipot_base.OUTPUT_OPTIONAL_CONFIG_SCHEMA)
 )
 
 async def to_code(config):
@@ -40,3 +40,4 @@ async def to_code(config):
 
     await output.register_output(var, config)
     await cg.register_parented(var, config[CONF_MCP4XXX_ID])
+    await mcp4xxx_digipot_base.set_initial_conditions(var, config)

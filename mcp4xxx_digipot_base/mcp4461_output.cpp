@@ -74,5 +74,52 @@ void MCP4XXXWiper::exit_shutdown() {
   this->parent_->set_wiper_exit_shutdown_(this->wiper_);
 }
 
+void MCP4XXXWiper::set_initial_terminals_(bool con_a, bool con_w, bool con_b) {
+  uint8_t tcon_index;
+  if (this->wiper_ == WIPER_0 || this->wiper_ == WIPER_1) {
+    tcon_index = 0;
+    
+  } else { // WIPER_2 and WIPER_3
+    tcon_index = 1;
+  }
+
+  uint16_t tcon_value = this->parent_->tcon_initial_value[tcon_index];
+  uint16_t tcon_update = this->parent_->build_tcon_payload_(con_a, con_w, con_b, true);
+  uint16_t bitmask = 0b00000111;  // 3 bits for wiper 0
+
+  if (this->wiper_ == WIPER_1 || this->wiper_ == WIPER_3) {
+    tcon_update = tcon_update << 4;
+    bitmask = bitmask << 4;
+  }
+  this->parent_->tcon_initial_value[tcon_index] = mcp4xxx_digipot_base::replace_bits(tcon_value, bitmask, tcon_update);
+  ESP_LOGVV(TAG, "Initial terminal connections set - A:%s, W:%s, B:%s (TCON=0x%02X)",
+           con_a ? "ON" : "OFF", con_w ? "ON" : "OFF", con_b ? "ON" : "OFF",
+           this->parent_->tcon_initial_value[tcon_index]);
+}
+
+void MCP4XXXWiper::set_initial_state_(float state) {
+  switch (this->wiper_) {
+  case WIPER_0:
+    this->parent_->wiper_initial_value[0] = static_cast<uint16_t>(state * this->parent_->MCP4XXX_MAX_VALUE);
+    break;
+  case WIPER_1:
+    this->parent_->wiper_initial_value[1] = static_cast<uint16_t>(state * this->parent_->MCP4XXX_MAX_VALUE);
+    break;
+  case WIPER_2:
+    this->parent_->wiper_initial_value[2] = static_cast<uint16_t>(state * this->parent_->MCP4XXX_MAX_VALUE);
+    break;
+  case WIPER_3:
+    this->parent_->wiper_initial_value[3] = static_cast<uint16_t>(state * this->parent_->MCP4XXX_MAX_VALUE);
+    break;
+
+  default:
+    break;
+  }
+  ESP_LOGVV(TAG, "Initial wiper %d level set to tap %d of %d",
+           static_cast<uint8_t>(this->wiper_),
+           static_cast<uint16_t>(state * this->parent_->MCP4XXX_MAX_VALUE),
+           this->parent_->MCP4XXX_MAX_VALUE);
+}
+
 }  // namespace mcp4xxx_digipot_base
 }  // namespace esphome

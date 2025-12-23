@@ -39,6 +39,11 @@ enum MCP4XXXWiperID : uint8_t {
   WIPER_3 = MCP4XXXAddresses::MCP4XXX_VW3
 };
 
+template <typename T, enable_if_t<std::is_unsigned<T>::value, int> = 0>
+constexpr T replace_bits(T target, T bitmask, T new_bits) {
+  return (target & ~bitmask) | (new_bits & bitmask);
+}
+
 // Terminal Connection Registers, not all devices have both TCON registers
 enum MCP4XXX_TCON_N : uint8_t {
   MCP4XXX_TCON_0 = MCP4XXXAddresses::MCP4XXX_TCON0,
@@ -58,6 +63,7 @@ class mcp4xxx_digipot_base_component : public Component {
   friend class MCP4XXXWiper;
   friend class mcp4xxx_nonvolatile_memory;
   void dump_config_base_();
+  uint16_t build_tcon_payload_(bool connect_a, bool connect_w, bool connect_b, bool hw_config);
   bool write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value);
   uint16_t read_tcon_register_(MCP4XXX_TCON_N tcon_id_);
   uint16_t read_status_register_();
@@ -73,6 +79,8 @@ class mcp4xxx_digipot_base_component : public Component {
   virtual bool read_mcp4xxx_register_(MCP4XXXAddresses address, uint16_t *data) = 0;
   virtual void communication_init_() = 0;
   uint16_t MCP4XXX_MAX_VALUE;
+  uint8_t tcon_initial_value[2] = {0xFF, 0xFF};
+  uint16_t wiper_initial_value[4] = {0xFF, 0xFF, 0xFF, 0xFF};
 };
 
 class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot_base::mcp4xxx_digipot_base_component> {
@@ -100,6 +108,8 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   void exit_shutdown();
   /// @brief Get maximum tap position of wiper, either 7 or 8 bit
   uint16_t get_tap_count() { return this->parent_->get_tap_count(); }
+  void set_initial_terminals_(bool con_a, bool con_w, bool con_b);
+  void set_initial_state_(float state);
 
  protected:
   void write_state(float state) override;

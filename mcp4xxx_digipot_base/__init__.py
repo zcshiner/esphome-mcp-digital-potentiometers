@@ -4,7 +4,6 @@ from esphome.const import CONF_INITIAL_VALUE
 
 CODEOWNERS = ["@zcshiner"]
 
-CONF_NUM_DIGIPOTS = 'num_digipots'
 CONF_TERMINAL_A = "terminal_a"
 CONF_TERMINAL_B = "terminal_b"
 CONF_TERMINAL_W = "terminal_w"
@@ -24,6 +23,14 @@ OUTPUT_OPTIONAL_CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_TERMINAL_A, default=True): cv.boolean,
         cv.Optional(CONF_TERMINAL_B, default=True): cv.boolean,
         cv.Optional(CONF_TERMINAL_W, default=True): cv.boolean,
-        cv.Optional(CONF_INITIAL_VALUE, default=0.5): cv.float_range(min=0.0, max=1.0),
+        # no default for initial value, respect EEPROM value (if supported)
+        cv.Optional(CONF_INITIAL_VALUE): cv.float_range(min=0.0, max=1.0),
     }
 )
+
+async def set_initial_conditions(var, config):
+    if not (config.get(CONF_TERMINAL_A) or config.get(CONF_TERMINAL_W) or config.get(CONF_TERMINAL_B)):
+        cg.add(var.set_initial_terminals_(config[CONF_TERMINAL_A], config[CONF_TERMINAL_W], config[CONF_TERMINAL_B]))
+        
+    if (initial_value := config.get(CONF_INITIAL_VALUE)) is not None:
+        cg.add(var.set_initial_state_(initial_value))

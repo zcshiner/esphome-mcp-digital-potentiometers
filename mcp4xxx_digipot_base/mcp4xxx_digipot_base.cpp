@@ -12,6 +12,26 @@ static const char *const TAG = "mcp4xxx_digipot_base";
 void mcp4xxx_digipot_base_component::setup() { 
   ESP_LOGD(TAG, "Setting up");
   this->communication_init_();
+
+  uint8_t tcon_lookup[2] = {MCP4XXX_TCON_N::MCP4XXX_TCON_0,
+                            MCP4XXX_TCON_N::MCP4XXX_TCON_1};
+  uint8_t wiper_lookup[4] = {MCP4XXXWiperID::WIPER_0, MCP4XXXWiperID::WIPER_1,
+                             MCP4XXXWiperID::WIPER_2, MCP4XXXWiperID::WIPER_3};
+
+  for (int i = 0; i < sizeof(tcon_lookup); i++) {
+    if (this->tcon_initial_value[i] != 0xFF) {
+      this->write_tcon_register_(static_cast<MCP4XXX_TCON_N>(tcon_lookup[i]), this->tcon_initial_value[i]);
+      ESP_LOGD(TAG, "Initialized TCON_%d to 0x%X", i, this->tcon_initial_value[i]);
+      ESP_LOGVV(TAG, "TCON_%d bits: 0b" BYTE_TO_BINARY_PATTERN,
+                i, BYTE_TO_BINARY(this->tcon_initial_value[i]));
+    }
+  }
+  for (int j = 0; j < sizeof(wiper_lookup); j++) {
+    if (this->wiper_initial_value[j] != 0xFF) {
+      this->set_wiper_value_(static_cast<MCP4XXXWiperID>(wiper_lookup[j]), this->wiper_initial_value[j]);
+      ESP_LOGD(TAG, "Initialized WIPER_%d to tap %d", j, this->wiper_initial_value[j]);
+    }
+  }
   ESP_LOGVV(TAG, "Setup finished");
 }
 
@@ -87,6 +107,18 @@ uint16_t mcp4xxx_digipot_base_component::read_status_register_() {
   return response;
 }
 
+uint16_t mcp4xxx_digipot_base_component::build_tcon_payload_(bool connect_a, bool connect_w,
+                                                             bool connect_b, bool hw_config) {
+  uint16_t tcon_update = 0;
+
+  if (connect_b) { tcon_update += 0b00000001; }
+  if (connect_w) { tcon_update += 0b00000010; }
+  if (connect_a) { tcon_update += 0b00000100; }
+  if (hw_config) { tcon_update += 0b00001000; }
+
+  return tcon_update;
+}
+
 bool mcp4xxx_digipot_base_component::set_terminal_connection_(MCP4XXXWiperID wiper,
                                                               bool connect_a, bool connect_w, bool connect_b) {
   MCP4XXX_TCON_N tcon_id;
@@ -98,19 +130,14 @@ bool mcp4xxx_digipot_base_component::set_terminal_connection_(MCP4XXXWiperID wip
   }
 
   uint16_t tcon_value = this->read_tcon_register_(tcon_id);
-  uint16_t tcon_update = 0;
-
-  if (connect_b) { tcon_update += 0b00000001; }
-  if (connect_w) { tcon_update += 0b00000010; }
-  if (connect_a) { tcon_update += 0b00000100; }
-
+  uint16_t tcon_update = this->build_tcon_payload_(connect_a, connect_w, connect_b, true);
   uint16_t bitmask = 0b00000111;  // 3 bits for wiper 0
 
   if (wiper == WIPER_1 || wiper == WIPER_3) {
     tcon_update = tcon_update << 4;
     bitmask = bitmask << 4;
   }
-  tcon_value = (tcon_value & ~bitmask) | (tcon_update & bitmask);
+  tcon_value = mcp4xxx_digipot_base::replace_bits(tcon_value, bitmask, tcon_update);
   
   ESP_LOGD(TAG, "Setting terminal connections - A:%s, W:%s, B:%s (TCON=0x%02X)",
            connect_a ? "ON" : "OFF", connect_w ? "ON" : "OFF", connect_b ? "ON" : "OFF", tcon_value);
@@ -135,7 +162,7 @@ bool mcp4xxx_digipot_base_component::set_wiper_enter_shutdown_(MCP4XXXWiperID wi
     tcon_update = tcon_update << 4;
     bitmask = bitmask << 4;
   }
-  tcon_value = (tcon_value & ~bitmask) | (~tcon_update & bitmask);
+  tcon_value = mcp4xxx_digipot_base::replace_bits(tcon_value, bitmask, static_cast<uint16_t>(~tcon_update));
 
   ESP_LOGD(TAG, "Enabling hardware shutdown of wiper, (TCON=0x%02X)", tcon_value);
 
@@ -159,7 +186,7 @@ bool mcp4xxx_digipot_base_component::set_wiper_exit_shutdown_(MCP4XXXWiperID wip
     tcon_update = tcon_update << 4;
     bitmask = bitmask << 4;
   }
-  tcon_value = (tcon_value & ~bitmask) | (~tcon_update & bitmask);
+  tcon_value = mcp4xxx_digipot_base::replace_bits(tcon_value, bitmask, static_cast<uint16_t>(~tcon_update));
 
   ESP_LOGD(TAG, "Disable hardware shutdown of wiper, (TCON=0x%02X)", tcon_value);
 
