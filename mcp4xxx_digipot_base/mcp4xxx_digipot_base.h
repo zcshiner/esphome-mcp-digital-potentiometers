@@ -56,7 +56,8 @@ class mcp4xxx_digipot_base_component : public Component {
   mcp4xxx_digipot_base_component(uint16_t digipot_taps) : MCP4XXX_MAX_VALUE(digipot_taps) {}
   void setup() override;
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
-  /// @brief Get maximum tap position of wiper, either 7 or 8 bit
+  /// @brief Get maximum tap position of wiper, either 7 or 8 bit;
+  /// @brief This value is the same for all wipers within a digital potentiometer
   /// @return Maximum tap position as integer
   uint16_t get_tap_count() const { return MCP4XXX_MAX_VALUE; }
 
@@ -88,11 +89,11 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
  public:
   MCP4XXXWiper(mcp4xxx_digipot_base_component *parent, MCP4XXXWiperID wiper) : parent_(parent), wiper_(wiper) {}
   /// @brief Set level of wiper
-  /// @param[in] state float value between 0.0 and 1.0
+  /// @param level integer level to set the wiper to, use writestate(float) for float levels
   void set_wiper_level(uint16_t level);
-  /// @brief Increase wiper by 1 tap, until max value is reached
+  /// @brief Increase wiper by 1 tap until max value is reached
   uint16_t increase_wiper();
-  /// @brief Decrease wiper by 1 tap, until min value is reached
+  /// @brief Decrease wiper by 1 tap until min value is reached
   uint16_t decrease_wiper();
     /// @brief Increase wiper by 1 tap blindly
   void increase_wiper_fast();
@@ -107,9 +108,16 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   void enter_shutdown();
   /// @brief Wake wiper from shutdown mode
   void exit_shutdown();
-  /// @brief Get maximum tap position of wiper, either 7 or 8 bit
+  /// @brief Get maximum tap position of wiper, either 7 or 8 bit;
+  /// @brief This value is the same for all wipers within a digital potentiometer
   uint16_t get_tap_count() { return this->parent_->get_tap_count(); }
+  /// @brief Set initial terminal connections for use during component setup
+  /// @param con_a Terminal A connection state
+  /// @param con_w Terminal W connection state
+  /// @param con_b Terminal B connection state
   void set_initial_terminals_(bool con_a, bool con_w, bool con_b);
+  /// @brief Set initial wiper position for use during component setup
+  /// @param state Float state between 0.0 and 1.0
   void set_initial_state_(float state);
 
  protected:
@@ -148,7 +156,7 @@ template<typename... Ts> class SetWiperValueAction : public Action<Ts...>, publi
     auto level = this->level_.value(x...);
     this->parent_->set_wiper_level(level);
   }
-  
+
   protected:
   MCP4XXXWiper *parent_;
 };
