@@ -4,6 +4,7 @@
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
 #include "esphome/components/output/float_output.h"
+#include "esphome/core/automation.h"
 
 namespace esphome {
 namespace mcp4xxx_digipot_base {
@@ -117,6 +118,39 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   mcp4xxx_digipot_base_component *parent_;
   MCP4XXXWiperID wiper_;
 
+};
+
+template<typename... Ts> class IncreaseAction : public Action<Ts...>, public Parented<MCP4XXXWiper> {
+ public:
+  explicit IncreaseAction(MCP4XXXWiper *parent) : parent_(parent) {}
+  void play(const Ts &...x) override { this->parent_->increase_wiper(); }
+
+ protected:
+  MCP4XXXWiper *parent_;
+};
+
+template<typename... Ts> class DecreaseAction : public Action<Ts...>, public Parented<MCP4XXXWiper> {
+ public:
+  explicit DecreaseAction(MCP4XXXWiper *parent) : parent_(parent) {}
+  void play(const Ts &...x) override { this->parent_->decrease_wiper(); }
+
+ protected:
+  MCP4XXXWiper *parent_;
+};
+
+template<typename... Ts> class SetWiperValueAction : public Action<Ts...>, public Parented<MCP4XXXWiper> {
+ public:
+  explicit SetWiperValueAction(MCP4XXXWiper *parent) : parent_(parent) {}
+
+  TEMPLATABLE_VALUE(uint16_t, level)
+
+  void play(const Ts &...x) override {
+    auto level = this->level_.value(x...);
+    this->parent_->set_wiper_level(level);
+  }
+  
+  protected:
+  MCP4XXXWiper *parent_;
 };
 
 }  // namespace mcp4xxx_digipot_base
