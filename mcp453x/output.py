@@ -25,8 +25,8 @@ CONFIG_SCHEMA = (
     output.FLOAT_OUTPUT_SCHEMA
     .extend(
         {
-            cv.Required(CONF_ID): cv.declare_id(mcp4xxx_wiper),
-            cv.GenerateID(CONF_MCP4XXX_ID): cv.use_id(mcp4xxx_digipot_base.mcp4xxx_digipot_base_component),            
+            cv.GenerateID(CONF_ID): cv.declare_id(mcp4xxx_wiper),
+            cv.Required(CONF_MCP4XXX_ID): cv.use_id(mcp4xxx_digipot_base.mcp4xxx_digipot_base_component),            
             cv.Required(CONF_CHANNEL): cv.enum(CHANNEL_OPTIONS, upper=True)
         }
     )
