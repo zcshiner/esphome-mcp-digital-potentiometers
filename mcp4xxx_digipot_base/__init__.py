@@ -1,5 +1,6 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome import automation
 from esphome.const import CONF_INITIAL_VALUE
 
 CODEOWNERS = ["@zcshiner"]
@@ -10,6 +11,12 @@ CONF_TERMINAL_W = "terminal_w"
 
 mcp4xxx_digipot_base_ns = cg.esphome_ns.namespace("mcp4xxx_digipot_base")
 mcp4xxx_digipot_base_component = mcp4xxx_digipot_base_ns.class_("mcp4xxx_digipot_base_component", cg.Component)
+IncreaseAction = mcp4xxx_digipot_base_ns.class_("IncreaseAction", automation.Action)
+DecreaseAction = mcp4xxx_digipot_base_ns.class_("DecreaseAction", automation.Action)
+SetWiperValueAction = mcp4xxx_digipot_base_ns.class_("SetWiperValueAction", automation.Action)
+SetTerminalsAction = mcp4xxx_digipot_base_ns.class_("SetTerminalsAction", automation.Action)
+EnterShutdownAction = mcp4xxx_digipot_base_ns.class_("EnterShutdownAction", automation.Action)
+ExitShutdownAction = mcp4xxx_digipot_base_ns.class_("ExitShutdownAction", automation.Action)
 
 MCP4XXXWiperID = mcp4xxx_digipot_base_ns.enum("MCP4XXXWiperID")
 
