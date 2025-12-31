@@ -16,6 +16,9 @@ mcp4xxx_wiper = mcp4xxx_digipot_base.mcp4xxx_digipot_base_ns.class_(
 IncreaseAction = mcp4xxx_digipot_base.mcp4xxx_digipot_base_ns.class_("IncreaseAction", automation.Action)
 DecreaseAction = mcp4xxx_digipot_base.mcp4xxx_digipot_base_ns.class_("DecreaseAction", automation.Action)
 SetWiperValueAction = mcp4xxx_digipot_base.mcp4xxx_digipot_base_ns.class_("SetWiperValueAction", automation.Action)
+SetTerminalsAction = mcp4xxx_digipot_base.mcp4xxx_digipot_base_ns.class_("SetTerminalsAction", automation.Action)
+EnterShutdownAction = mcp4xxx_digipot_base.mcp4xxx_digipot_base_ns.class_("EnterShutdownAction", automation.Action)
+ExitShutdownAction = mcp4xxx_digipot_base.mcp4xxx_digipot_base_ns.class_("ExitShutdownAction", automation.Action)
 
 CHANNEL_OPTIONS = {
     '0': mcp4xxx_digipot_base.MCP4XXXWiperID.WIPER_0,
@@ -33,7 +36,7 @@ CONFIG_SCHEMA = (
     .extend(mcp4xxx_digipot_base.OUTPUT_OPTIONAL_CONFIG_SCHEMA)
 )
 
-INCREASE_DECREASE_ACTION_SCHEMA = automation.maybe_simple_id(
+WIPER_ONLY_ACTION_SCHEMA = automation.maybe_simple_id(
         {
             cv.Required(CONF_ID): cv.use_id(mcp4xxx_wiper),
         }
@@ -46,18 +49,42 @@ SET_LEVEL_ACTION_SCHEMA = cv.Schema(
         }
     )
 
-@automation.register_action("output.increment_wiper", IncreaseAction, INCREASE_DECREASE_ACTION_SCHEMA)
+SET_TERMINALS_ACTION_SCHEMA = cv.Schema(
+        {
+        cv.Required(CONF_ID): cv.use_id(mcp4xxx_wiper),
+        cv.Optional(mcp4xxx_digipot_base.CONF_TERMINAL_A, default=True): cv.boolean,
+        cv.Optional(mcp4xxx_digipot_base.CONF_TERMINAL_B, default=True): cv.boolean,
+        cv.Optional(mcp4xxx_digipot_base.CONF_TERMINAL_W, default=True): cv.boolean,
+        }
+    )
+
+@automation.register_action("output.increment_wiper", IncreaseAction, WIPER_ONLY_ACTION_SCHEMA)
 async def output_increase_wiper(config, condition_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     return cg.new_Pvariable(condition_id, template_arg, paren)
 
-@automation.register_action("output.decrement_wiper", DecreaseAction, INCREASE_DECREASE_ACTION_SCHEMA)
+@automation.register_action("output.decrement_wiper", DecreaseAction, WIPER_ONLY_ACTION_SCHEMA)
 async def output_decrease_wiper(config, condition_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     return cg.new_Pvariable(condition_id, template_arg, paren)
 
 @automation.register_action("output.set_wiper_level", SetWiperValueAction, SET_LEVEL_ACTION_SCHEMA)
 async def output_set_wiper_level(config, condition_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(condition_id, template_arg, paren)
+
+@automation.register_action("output.set_terminals", SetTerminalsAction, SET_TERMINALS_ACTION_SCHEMA)
+async def output_set_terminals(config, condition_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(condition_id, template_arg, paren)
+
+@automation.register_action("output.enter_shutdown", EnterShutdownAction, WIPER_ONLY_ACTION_SCHEMA)
+async def output_enter_shutdown(config, condition_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(condition_id, template_arg, paren)
+
+@automation.register_action("output.exit_shutdown", ExitShutdownAction, WIPER_ONLY_ACTION_SCHEMA)
+async def output_exit_shutdown(config, condition_id, template_arg, args):
     paren = await cg.get_variable(config[CONF_ID])
     return cg.new_Pvariable(condition_id, template_arg, paren)
 

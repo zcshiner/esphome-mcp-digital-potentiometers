@@ -161,5 +161,42 @@ template<typename... Ts> class SetWiperValueAction : public Action<Ts...>, publi
   MCP4XXXWiper *parent_;
 };
 
+template<typename... Ts> class SetTerminalsAction : public Action<Ts...>, public Parented<MCP4XXXWiper> {
+ public:
+  explicit SetTerminalsAction(MCP4XXXWiper *parent) : parent_(parent) {}
+  
+  TEMPLATABLE_VALUE(bool, terminal_a)
+  TEMPLATABLE_VALUE(bool, terminal_w)
+  TEMPLATABLE_VALUE(bool, terminal_b)
+  
+  void play(const Ts &...x) override {
+    bool term_a = this->terminal_a_.value(x...);
+    bool term_w = this->terminal_w_.value(x...);
+    bool term_b = this->terminal_b_.value(x...);
+    this->parent_->set_terminals(term_a, term_w, term_b);
+  }
+
+ protected:
+  MCP4XXXWiper *parent_;
+};
+
+template<typename... Ts> class EnterShutdownAction : public Action<Ts...>, public Parented<MCP4XXXWiper> {
+ public:
+  explicit EnterShutdownAction(MCP4XXXWiper *parent) : parent_(parent) {}
+  void play(const Ts &...x) override { this->parent_->enter_shutdown(); }
+
+ protected:
+  MCP4XXXWiper *parent_;
+};
+
+template<typename... Ts> class ExitShutdownAction : public Action<Ts...>, public Parented<MCP4XXXWiper> {
+ public:
+  explicit ExitShutdownAction(MCP4XXXWiper *parent) : parent_(parent) {}
+  void play(const Ts &...x) override { this->parent_->exit_shutdown(); }
+
+ protected:
+  MCP4XXXWiper *parent_;
+};
+
 }  // namespace mcp4xxx_digipot_base
 }  // namespace esphome
