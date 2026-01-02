@@ -80,7 +80,7 @@ void mcp4xxx_digipot_spi_component::dump_config() {
   LOG_PIN("  CS Pin: ", this->cs_);
 }
 
-inline void mcp4xxx_digipot_spi_component::communication_init_() {
+void mcp4xxx_digipot_spi_component::communication_init_() {
   this->spi_setup();
 }
 

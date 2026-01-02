@@ -57,7 +57,7 @@ void mcp4xxx_digipot_i2c_component::dump_config() {
   LOG_I2C_DEVICE(this);
 }
 
-inline void mcp4xxx_digipot_i2c_component::communication_init_() {
+void mcp4xxx_digipot_i2c_component::communication_init_() {
   if (this->write(nullptr, 0)) {
     ESP_LOGE(TAG, "Comm failed during setup");
     this->mark_failed();
