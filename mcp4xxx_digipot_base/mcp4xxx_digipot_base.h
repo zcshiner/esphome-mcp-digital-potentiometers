@@ -63,7 +63,6 @@ class mcp4xxx_digipot_base_component : public Component {
 
  protected:
   friend class MCP4XXXWiper;
-  friend class mcp4xxx_nonvolatile_memory;
   void dump_config_base_();
   uint16_t build_tcon_payload_(bool connect_a, bool connect_w, bool connect_b, bool hw_config);
   bool write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value);

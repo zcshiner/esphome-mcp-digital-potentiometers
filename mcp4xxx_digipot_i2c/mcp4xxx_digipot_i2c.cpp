@@ -31,7 +31,6 @@ bool mcp4xxx_digipot_i2c_component::write_mcp4xxx_register_(mcp4xxx_digipot_base
   }
 }
 
-// TODO: set warnings or return error codes? or both?
 bool mcp4xxx_digipot_i2c_component::read_mcp4xxx_register_(mcp4xxx_digipot_base::MCP4XXXAddresses address,
                                                            uint16_t *data) {
   uint8_t buffer[2]; // reads always return 2 bytes
@@ -43,14 +42,12 @@ bool mcp4xxx_digipot_i2c_component::read_mcp4xxx_register_(mcp4xxx_digipot_base:
 
   if (this->read(buffer, 2) != i2c::ERROR_OK) {
     ESP_LOGE(TAG, "Read failed");
-    this->status_set_warning();
     return 1;
   }
   ESP_LOGV(TAG, "Read register: command=0x%02X, response=0x%02X.%02X 0b"
             BYTE_TO_BINARY_PATTERN "." BYTE_TO_BINARY_PATTERN,
             command_byte, buffer[0], buffer[1], BYTE_TO_BINARY(buffer[0]), BYTE_TO_BINARY(buffer[1]));
 
-  this->status_clear_warning();
   *data = encode_uint16(buffer[0], buffer[1]);
   return 0;
 }
