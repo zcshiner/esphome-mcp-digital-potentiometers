@@ -27,7 +27,7 @@ bool mcp4xxx_digipot_i2c_component::write_mcp4xxx_register_(mcp4xxx_digipot_base
     data[1] = static_cast<uint8_t>(data_bits & 0xFF);
     ESP_LOGV(TAG, "Wrote two bytes: data=0x%x 0b" BYTE_TO_BINARY_PATTERN "." BYTE_TO_BINARY_PATTERN,
          data_bits, BYTE_TO_BINARY(data[0]), BYTE_TO_BINARY(data[1]));
-    return this->write(data, 2) != i2c::ERROR_OK;
+    return this->write(data, 2) != i2c::ERROR_OK; // return false on ERROR_OK
   }
 }
 
@@ -42,14 +42,14 @@ bool mcp4xxx_digipot_i2c_component::read_mcp4xxx_register_(mcp4xxx_digipot_base:
 
   if (this->read(buffer, 2) != i2c::ERROR_OK) {
     ESP_LOGE(TAG, "Read failed");
-    return 1;
+    return true;
   }
   ESP_LOGV(TAG, "Read register: command=0x%02X, response=0x%02X.%02X 0b"
             BYTE_TO_BINARY_PATTERN "." BYTE_TO_BINARY_PATTERN,
             command_byte, buffer[0], buffer[1], BYTE_TO_BINARY(buffer[0]), BYTE_TO_BINARY(buffer[1]));
 
   *data = encode_uint16(buffer[0], buffer[1]);
-  return 0;
+  return false; // return false on success
 }
 
 void mcp4xxx_digipot_i2c_component::dump_config() {

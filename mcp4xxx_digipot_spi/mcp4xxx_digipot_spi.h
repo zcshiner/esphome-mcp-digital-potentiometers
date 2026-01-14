@@ -14,7 +14,8 @@ class mcp4xxx_digipot_spi_component : public mcp4xxx_digipot_base::mcp4xxx_digip
 
 protected:
   bool check_spi_CMDERR_(uint8_t *data);
-  bool write_mcp4xxx_register_(mcp4xxx_digipot_base::MCP4XXXAddresses address, mcp4xxx_digipot_base::MCP4XXXCommands command, uint16_t data_bits = 0) override;
+  bool write_mcp4xxx_register_(mcp4xxx_digipot_base::MCP4XXXAddresses address,
+                               mcp4xxx_digipot_base::MCP4XXXCommands command, uint16_t data_bits = 0) override;
   bool read_mcp4xxx_register_(mcp4xxx_digipot_base::MCP4XXXAddresses address, uint16_t *data) override;
   void communication_init_() override;
 };

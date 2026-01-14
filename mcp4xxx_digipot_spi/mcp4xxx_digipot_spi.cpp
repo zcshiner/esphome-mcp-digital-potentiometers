@@ -48,8 +48,8 @@ bool mcp4xxx_digipot_spi_component::write_mcp4xxx_register_(mcp4xxx_digipot_base
   return check_spi_CMDERR_(buffer);
 }
 
-bool mcp4xxx_digipot_spi_component::read_mcp4xxx_register_(mcp4xxx_digipot_base::MCP4XXXAddresses address, uint16_t *data) {
-  uint8_t buffer[2] = {0x00, 0xFF};
+bool mcp4xxx_digipot_spi_component::read_mcp4xxx_register_(mcp4xxx_digipot_base::MCP4XXXAddresses address,
+  uint16_t *data) {uint8_t buffer[2] = {0x00, 0xFF};
 
   // Command byte format: AD3 AD2 AD1 AD0 C1 C0 D9 D8
   // Address bits: 7-4, Command bits: 3-2, Data bits: 1-0, D9 unused
