@@ -11,6 +11,7 @@ MULTI_CONF = True
 
 DIGIPOT_TAPS = 256 #8-bit
 DEFAULT_ADDRESS = 0x2C
+HAS_NV_MEMORY = True
 
 # MCP446X ‘0101 1’b + A1:A0
 I2C_ADDRESS_OPTIONS = [
@@ -40,6 +41,6 @@ CONFIG_SCHEMA = (
 )
 
 async def to_code(config):
-    var = cg.new_Pvariable(config[CONF_ID], DIGIPOT_TAPS)
+    var = cg.new_Pvariable(config[CONF_ID], DIGIPOT_TAPS, HAS_NV_MEMORY)
     await cg.register_component(var, config)
     await i2c.register_i2c_device(var, config)

@@ -14,6 +14,7 @@ mcp4xxx_digipot_base_component = mcp4xxx_digipot_base_ns.class_("mcp4xxx_digipot
 IncreaseAction = mcp4xxx_digipot_base_ns.class_("IncreaseAction", automation.Action)
 DecreaseAction = mcp4xxx_digipot_base_ns.class_("DecreaseAction", automation.Action)
 SetWiperValueAction = mcp4xxx_digipot_base_ns.class_("SetWiperValueAction", automation.Action)
+SetNonvolatileWiperValueAction = mcp4xxx_digipot_base_ns.class_("SetNonvolatileWiperValueAction", automation.Action)
 SetTerminalsAction = mcp4xxx_digipot_base_ns.class_("SetTerminalsAction", automation.Action)
 EnterShutdownAction = mcp4xxx_digipot_base_ns.class_("EnterShutdownAction", automation.Action)
 ExitShutdownAction = mcp4xxx_digipot_base_ns.class_("ExitShutdownAction", automation.Action)

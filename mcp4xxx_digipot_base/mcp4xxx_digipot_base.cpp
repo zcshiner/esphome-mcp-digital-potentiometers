@@ -42,15 +42,38 @@ void mcp4xxx_digipot_base_component::dump_config_base_() {
                 this->MCP4XXX_MAX_VALUE);
 }
 
-bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value) {
+bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value, bool nonvolatile) {
   if (value > MCP4XXX_MAX_VALUE) {
     ESP_LOGE(TAG, "Invalid wiper value: %d (max: %d)", value, MCP4XXX_MAX_VALUE);
-    return false;
+    return true;
   }
-  ESP_LOGV(TAG, "Setting wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
 
-  this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(wiper), MCP4XXXCommands::WRITE, value);
-  return true;
+  ESP_LOGVV(TAG, "HAS_NV_MEMORY=%s, NONVOLATILE=%s", this->MCP4XXX_HAS_NV_MEMORY ? "true" : "false", nonvolatile ? "true" : "false");
+  
+  MCP4XXXAddresses wiper_address = static_cast<MCP4XXXAddresses>(wiper);
+  if (this->MCP4XXX_HAS_NV_MEMORY && nonvolatile) {
+    switch (wiper) {
+      case MCP4XXXWiperID::WIPER_0:
+        wiper_address = MCP4XXX_NVW0;
+        break;
+      case MCP4XXXWiperID::WIPER_1:
+        wiper_address = MCP4XXX_NVW1;
+        break;
+      case MCP4XXXWiperID::WIPER_2:
+        wiper_address = MCP4XXX_NVW2;
+        break;
+      case MCP4XXXWiperID::WIPER_3:
+        wiper_address = MCP4XXX_NVW3;
+        break;
+      default:
+        break;
+    }
+    ESP_LOGV(TAG, "Setting non-volatile wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
+  } else {
+    ESP_LOGV(TAG, "Setting volatile wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
+  }
+
+  return this->write_mcp4xxx_register_(wiper_address, MCP4XXXCommands::WRITE, value);
 }
 
 uint16_t mcp4xxx_digipot_base_component::read_wiper_value_(MCP4XXXWiperID wiper) {
@@ -194,12 +217,12 @@ bool mcp4xxx_digipot_base_component::set_wiper_exit_shutdown_(MCP4XXXWiperID wip
 }
 
 bool mcp4xxx_digipot_base_component::EEPROM_write_active_() {
-  uint16_t status = read_status_register_();
+  uint16_t status = this->read_status_register_();
   uint16_t bitmask = 0b00010000;
-  bool is_write_active = (status & bitmask) == bitmask;
-  ESP_LOGD(TAG, "EEPROM write active: %s", is_write_active ? "YES" : "NO");
+  bool write_active = (status & bitmask) == bitmask;
+  ESP_LOGD(TAG, "EEPROM write active: %s", write_active ? "YES" : "NO");
 
-  return is_write_active;
+  return write_active;
 }
 
 }  // namespace mcp4xxx_digipot_base

@@ -9,8 +9,21 @@ namespace mcp4xxx_digipot_base {
 
 static const char *const TAG = "mcp4xxx_digipot_base.output";
 
-void MCP4XXXWiper::set_wiper_level(uint16_t level) {
-  this->parent_->set_wiper_value_(this->wiper_, level);
+bool MCP4XXXWiper::set_wiper_level(uint16_t level) {
+  return this->parent_->set_wiper_value_(this->wiper_, level, false);
+}
+
+bool MCP4XXXWiper::set_nonvolatile_wiper_level(uint16_t level) {
+  if (!this->parent_->MCP4XXX_HAS_NV_MEMORY) {
+    ESP_LOGW(TAG, "NV wiper not supported");
+  }
+
+  if (this->parent_->EEPROM_write_active_()) {
+    ESP_LOGE(TAG, "Unable to write to non-volatile wiper");
+  } else {
+    return this->parent_->set_wiper_value_(this->wiper_, level, true);
+  }
+  return true;
 }
 
 // Override from FloatOutput - Called from Home Assistant

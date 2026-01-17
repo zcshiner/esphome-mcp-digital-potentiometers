@@ -53,7 +53,8 @@ enum MCP4XXX_TCON_N : uint8_t {
 
 class mcp4xxx_digipot_base_component : public Component {
  public:
-  mcp4xxx_digipot_base_component(uint16_t digipot_taps) : MCP4XXX_MAX_VALUE(digipot_taps) {}
+  mcp4xxx_digipot_base_component(uint16_t digipot_taps, bool has_nv_memory = false) : MCP4XXX_MAX_VALUE(digipot_taps),
+                                  MCP4XXX_HAS_NV_MEMORY(has_nv_memory) {}
   void setup() override;
   float get_setup_priority() const override { return setup_priority::HARDWARE; }
   /// @brief Get maximum tap position of wiper, either 7 or 8 bit;
@@ -64,11 +65,11 @@ class mcp4xxx_digipot_base_component : public Component {
  protected:
   friend class MCP4XXXWiper;
   void dump_config_base_();
-  uint16_t build_tcon_payload_(bool connect_a, bool connect_w, bool connect_b, bool hw_config);
+  static uint16_t build_tcon_payload_(bool connect_a, bool connect_w, bool connect_b, bool hw_config);
   bool write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value);
   uint16_t read_tcon_register_(MCP4XXX_TCON_N tcon_id_);
   uint16_t read_status_register_();
-  bool set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value);
+  bool set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value, bool nonvolatile = false);
   uint16_t read_wiper_value_(MCP4XXXWiperID wiper);
   bool increment_wiper_(MCP4XXXWiperID wiper);
   bool decrement_wiper_(MCP4XXXWiperID wiper);
@@ -82,6 +83,7 @@ class mcp4xxx_digipot_base_component : public Component {
   uint16_t MCP4XXX_MAX_VALUE;
   uint8_t tcon_initial_value[2] = {0xFF, 0xFF};
   uint16_t wiper_initial_value[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+  bool MCP4XXX_HAS_NV_MEMORY;
 };
 
 class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot_base::mcp4xxx_digipot_base_component> {
@@ -89,12 +91,19 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   MCP4XXXWiper(mcp4xxx_digipot_base_component *parent, MCP4XXXWiperID wiper) : parent_(parent), wiper_(wiper) {}
   /// @brief Set level of wiper
   /// @param level integer level to set the wiper to, use writestate(float) for float levels
-  void set_wiper_level(uint16_t level);
+  /// @return false on success
+  bool set_wiper_level(uint16_t level);
+  /// @brief Set level of non-volatile wiper
+  /// @param level integer level to set the wiper to, use writestate(float) for float levels
+  /// @return false on success
+  bool set_nonvolatile_wiper_level(uint16_t level);
   /// @brief Increase wiper by 1 tap until max value is reached
+  /// @return New wiper value after increase
   uint16_t increase_wiper();
   /// @brief Decrease wiper by 1 tap until min value is reached
+  /// @return New wiper value after decrease
   uint16_t decrease_wiper();
-    /// @brief Increase wiper by 1 tap blindly
+  /// @brief Increase wiper by 1 tap blindly
   void increase_wiper_fast();
   /// @brief Decrease wiper by 1 tap blindly
   void decrease_wiper_fast();
@@ -109,6 +118,7 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   void exit_shutdown();
   /// @brief Get maximum tap position of wiper, either 7 or 8 bit;
   /// @brief This value is the same for all wipers within a digital potentiometer
+  /// @return Maximum tap position as integer
   uint16_t get_tap_count() { return this->parent_->get_tap_count(); }
   /// @brief Set initial terminal connections for use during component setup
   /// @param con_a Terminal A connection state
@@ -153,11 +163,26 @@ template<typename... Ts> class SetWiperValueAction : public Action<Ts...>, publi
 
   void play(const Ts &...x) override {
     auto level = this->level_.value(x...);
-    this->parent_->set_wiper_level(level);
+    this->parent_->set_wiper_level(level * this->parent_->get_tap_count()); // use write_state?
+    // this->parent_->write_state(level);
   }
 
   protected:
   MCP4XXXWiper *parent_;
+};
+
+template<typename... Ts> class SetNonvolatileWiperValueAction : public Action<Ts...>, public Parented<MCP4XXXWiper>  {
+ public:
+  explicit SetNonvolatileWiperValueAction(MCP4XXXWiper *wiper) : wiper_(wiper) {}
+
+  TEMPLATABLE_VALUE(float, level)
+
+  void play(const Ts &...x) override {
+    this->wiper_->set_nonvolatile_wiper_level(this->level_.value(x...) * this->wiper_->get_tap_count());
+  }
+
+  protected:
+  MCP4XXXWiper *wiper_;
 };
 
 template<typename... Ts> class SetTerminalsAction : public Action<Ts...>, public Parented<MCP4XXXWiper> {
