@@ -115,7 +115,7 @@ uint16_t mcp4xxx_digipot_base_component::read_tcon_register_(MCP4XXX_TCON_N tcon
 bool mcp4xxx_digipot_base_component::write_tcon_register_(MCP4XXX_TCON_N tcon_id_, uint16_t value) {
   this->write_mcp4xxx_register_(static_cast<MCP4XXXAddresses>(tcon_id_), MCP4XXXCommands::WRITE, value);
   
-  ESP_LOGV(TAG, "Wrote 0x%X from TCON_%s", value, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
+  ESP_LOGV(TAG, "Wrote 0x%X to TCON_%s", value, tcon_id_ == MCP4XXX_TCON_N::MCP4XXX_TCON_0 ? "0" : "1");
   return true;
 }
 
