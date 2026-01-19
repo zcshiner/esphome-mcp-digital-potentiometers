@@ -4,7 +4,6 @@ import esphome.config_validation as cv
 from esphome.const import CONF_CHANNEL, CONF_ID, CONF_LEVEL
 from .. import mcp4xxx_digipot_base as dp
 from esphome import automation
-from . import DIGIPOT_TAPS
 
 DEPENDENCIES = ["mcp4xxx_digipot_base"]
 CONF_MCP4XXX_ID = "mcp453x_id"
