@@ -6,7 +6,7 @@
 namespace esphome {
 namespace mcp4xxx_digipot_spi {
 
-static const char *const TAG = "mcp4xxx_digipot_spi";
+static const char *const TAG = "mcp4xxx_digipot_base";
 
 bool mcp4xxx_digipot_spi_component::check_spi_CMDERR_(uint8_t *data) {
   // // check response for error, it's always in the first byte

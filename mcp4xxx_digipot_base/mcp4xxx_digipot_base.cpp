@@ -38,8 +38,12 @@ void mcp4xxx_digipot_base_component::setup() {
 void mcp4xxx_digipot_base_component::dump_config_base_() {
   ESP_LOGCONFIG(TAG,
                 "MCP4XXX Digipot Base:\n"
-                "  Wiper Tap Count: %d",
-                this->MCP4XXX_MAX_VALUE);
+                "  Tap Count: %d\n"
+                "  Has NV Memory: %s",
+                this->MCP4XXX_MAX_VALUE, this->MCP4XXX_HAS_NV_MEMORY ? "true" : "false");
+  if (this->is_failed()) {
+    ESP_LOGE(TAG, ESP_LOG_MSG_COMM_FAIL);
+  }
 }
 
 bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint16_t value, bool nonvolatile) {

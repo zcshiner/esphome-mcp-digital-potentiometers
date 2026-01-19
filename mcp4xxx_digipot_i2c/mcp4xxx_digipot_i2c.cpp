@@ -6,7 +6,7 @@
 namespace esphome {
 namespace mcp4xxx_digipot_i2c {
 
-static const char *const TAG = "mcp4xxx_digipot_i2c";
+static const char *const TAG = "mcp4xxx_digipot_base";
 
 bool mcp4xxx_digipot_i2c_component::write_mcp4xxx_register_(mcp4xxx_digipot_base::MCP4XXXAddresses address,
                                           mcp4xxx_digipot_base::MCP4XXXCommands command, uint16_t data_bits) {
@@ -58,8 +58,7 @@ void mcp4xxx_digipot_i2c_component::dump_config() {
 }
 
 void mcp4xxx_digipot_i2c_component::communication_init_() {
-  if (this->write(nullptr, 0)) {
-    ESP_LOGE(TAG, "Comm failed during setup");
+  if (this->write(nullptr, 0) != i2c::ERROR_OK) {
     this->mark_failed();
   }
 }
