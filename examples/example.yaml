@@ -1,0 +1,45 @@
+esphome:
+  name: esp-digipot
+  friendly_name: digipot-test
+
+esp32:
+  variant: ESP32C6
+  framework:
+    type: esp-idf
+
+logger:
+  level: VERBOSE
+
+api:
+  encryption:
+    key: !secret example_api_key
+ota:
+  - platform: esphome
+    password: !secret example_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  domain: !secret wifi_domain
+
+external_components:
+  - source: github://zcshiner/esphome-mcp-digital-potentiometers@main
+
+i2c:
+  sda: GPIO22
+  scl: GPIO23
+
+mcp456x:
+  - id: mcp456x_output
+    address: 0x2E
+
+output:
+  - platform: mcp456x
+    id: digipot_channel_0
+    mcp456x_id: mcp456x_output
+    channel: 0
+
+light:
+  - platform: monochromatic
+    name: "Example Light"
+    output: digipot_channel_0
