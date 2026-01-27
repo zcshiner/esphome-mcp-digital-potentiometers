@@ -71,6 +71,8 @@ bool mcp4xxx_digipot_base_component::set_wiper_value_(MCP4XXXWiperID wiper, uint
       default:
         break;
     }
+    ESP_LOGV(TAG, "Previous non-volatile wiper %d was tap %d of %d",
+            wiper, this->read_wiper_value_(wiper_address), MCP4XXX_MAX_VALUE);
     ESP_LOGV(TAG, "Setting non-volatile wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
   } else {
     ESP_LOGV(TAG, "Setting volatile wiper %d to tap %d of %d", wiper, value, MCP4XXX_MAX_VALUE);
