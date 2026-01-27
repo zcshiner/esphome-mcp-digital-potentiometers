@@ -7,7 +7,6 @@ namespace esphome {
 namespace mcp4xxx_digipot_base {
 
 static const char *const TAG = "mcp4xxx_digipot_base";
-// constexpr uint8_t EEPROM_WRITE_TIMEOUT_MS = 10;
 
 void mcp4xxx_digipot_base_component::setup() { 
   ESP_LOGD(TAG, "Setting up");

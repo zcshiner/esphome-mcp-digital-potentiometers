@@ -94,7 +94,7 @@ class MCP4XXXWiper : public output::FloatOutput, public Parented<mcp4xxx_digipot
   /// @return false on success
   bool set_wiper_level(uint16_t level);
   /// @brief Set level of non-volatile wiper
-  /// @param level integer level to set the wiper to, use writestate(float) for float levels
+  /// @param level integer level to set the wiper to
   /// @return false on success
   bool set_nonvolatile_wiper_level(uint16_t level);
   /// @brief Increase wiper by 1 tap until max value is reached
