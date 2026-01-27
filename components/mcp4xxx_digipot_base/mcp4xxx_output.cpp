@@ -16,12 +16,13 @@ bool MCP4XXXWiper::set_wiper_level(uint16_t level) {
 bool MCP4XXXWiper::set_nonvolatile_wiper_level(uint16_t level) {
   if (!this->parent_->MCP4XXX_HAS_NV_MEMORY) {
     ESP_LOGW(TAG, "NV wiper not supported");
-  }
+  } else {
 
   if (this->parent_->EEPROM_write_active_()) {
     ESP_LOGE(TAG, "Unable to write to non-volatile wiper");
   } else {
     return this->parent_->set_wiper_value_(this->wiper_, level, true);
+    }
   }
   return true;
 }
