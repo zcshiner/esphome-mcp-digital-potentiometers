@@ -223,7 +223,7 @@ bool mcp4xxx_digipot_base_component::set_wiper_exit_shutdown_(MCP4XXXWiperID wip
 
 bool mcp4xxx_digipot_base_component::EEPROM_write_active_() {
   uint16_t status = this->read_status_register_();
-  uint16_t bitmask = 0b00010000;
+  uint16_t bitmask = 0b00001000;
   bool write_active = (status & bitmask) == bitmask;
   ESP_LOGD(TAG, "EEPROM write active: %s", write_active ? "YES" : "NO");
 
